@@ -1,0 +1,12 @@
+# OS / editor
+.DS_Store
+*.swp
+
+# OfficeCLI scratch and temp outputs
+*.tmp
+.officecli/
+/out/
+/build/
+
+# Test renders
+tests/.out/
