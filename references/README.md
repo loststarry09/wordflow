@@ -2,6 +2,8 @@
 
 Layout knowledge for WordFlow. These files are **disclosed on demand**: `SKILL.md` points here, and an agent loads a single topic only when a task needs it. Keep each file self-contained and focused; do not duplicate content across files.
 
+For the distilled current conclusions, read [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md); these files hold the detail and the evidence behind them.
+
 ## Layout
 
 | Directory | Concern | Example topics |

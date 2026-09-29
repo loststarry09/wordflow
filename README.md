@@ -3,6 +3,18 @@
 > A Word layout **Skill for Agents**.
 > OfficeCLI operates DOCX; WordFlow teaches an Agent how to use OfficeCLI to lay out Word documents in a standards-based, maintainable, compatibility-first way.
 
+## Where to start (Agent reading order)
+
+Read these first, in order — they are the whole default context:
+
+1. [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) — authoritative current status: what is decided, verified, and next.
+2. [`CONTEXT.md`](./CONTEXT.md) — the ubiquitous language.
+3. [`SKILL.md`](./SKILL.md) — the agent-facing entry point.
+4. Then only the **ADR or `references/` file the task actually touches**.
+
+Do **not** read `report/` by default: it is a dated audit trail, opened only to trace how a
+decision or fact was reached (see [`report/README.md`](./report/README.md)).
+
 ## Why this exists
 
 Agents can already read and write DOCX through OfficeCLI, but knowing *which* OOXML features to use — and which to avoid — is the hard part. WordFlow is the missing layer of judgement between "the CLI can do this" and "this document will open correctly and stay maintainable in Microsoft Word, WPS Writer, and LibreOffice Writer."
@@ -46,6 +58,8 @@ Agents can already read and write DOCX through OfficeCLI, but knowing *which* OO
 ```
 wordflow/
 ├── README.md            # this file
+├── PROJECT_STATUS.md    # authoritative current status (read first)
+├── CONTEXT.md           # ubiquitous language / glossary
 ├── SKILL.md             # agent-facing entry point (minimal; grows over time)
 ├── .gitignore
 ├── references/          # layout knowledge, disclosed on demand (see references/README.md)
@@ -75,4 +89,8 @@ wordflow/
 
 ## Status
 
-**Foundation.** The skill skeleton, references layout, and a verified DOCX fixture suite exist. Researched facts live under `references/research/`, tagged verified / standard / uncertain. No WordFlow product guidance or layout rules have been written yet.
+**Foundation.** The skill skeleton, references layout, and a verified DOCX fixture suite
+exist; requirements are clarified and the compatibility research is done. No WordFlow
+product guidance or layout rules have been written yet.
+
+**Current status lives in [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).**

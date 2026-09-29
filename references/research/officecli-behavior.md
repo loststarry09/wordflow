@@ -9,6 +9,8 @@ Legend:
 
 Pinned version: **OfficeCLI 1.0.152** (`officecli --version`). Help is version-pinned and authoritative for schema; these notes record observed behaviour and gaps.
 
+See also `references/research/field-recalc-and-cross-app-verification.md` for field cache/recalculation behaviour verified against real Word and WPS.
+
 ## Document creation and defaults
 
 - **[V]** `officecli create <file> --locale <tag>` sets per-script default fonts in `docDefaults` and enables RTL for Arabic/Hebrew/etc. locales. Without `--locale`, the host locale is used, so output is **not reproducible** across machines. Always pass `--locale`.
@@ -45,7 +47,7 @@ Pinned version: **OfficeCLI 1.0.152** (`officecli --version`). Help is version-p
 - **[V] `refresh` runs on Linux** and reports `Refreshed: … (backend: html)` with `Note: HTML fallback used. TOC page numbers reflect officecli's HTML pagination.` The CLI help still says "Word + Windows required for .docx", so treat the fallback as best-effort and version-dependent.
 - **[V]** After `refresh`, TOC cached entries were populated (`Introduction\t2`, `Background\t2`, `Methods\t2`) and `PAGEREF` caches became real page numbers (`1`). `evaluated=true` for all.
 - **[V] `refresh` does NOT resolve `REF`.** `REF target \h` reported `evaluated=true` but its cached text stayed the placeholder `«target»`, rendered as `Reference: «target» on page 1`. `PAGEREF` in the same paragraph resolved correctly. **Do not trust `evaluated=true` alone for `REF`; check the cached text.**
-- **[V]** Fields written without a cache render the sentinel `#OCLI_NOTEVAL!` in `view text`; `view issues` emits subtype `field_not_evaluated`.
+- **[V]** `add field` always writes a **cached result**, so `evaluated=true` and `view issues` show no problem even when that cache is a placeholder. For TOC and REF the placeholder is `Update field to see table of contents` and `«target»` respectively — judge a field by its cached **text**, not the flag. (Earlier notes describing an `#OCLI_NOTEVAL!` sentinel apply to other construction paths, not `add field` in 1.0.152.)
 
 ## Pictures and equations
 

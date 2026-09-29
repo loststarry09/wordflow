@@ -23,8 +23,8 @@ General:
 
 ### Headings and TOC
 - **[S]** TOC fields depend on heading styles + outline levels. Word rebuilds a TOC on open only when `w:updateFields=true`; without cached entries LibreOffice shows `Error! No table of contents entries found`.
-- **[V]** OfficeCLI writes the TOC field and `refresh` (HTML backend) populated cached entries on Linux.
-- **[?]** Whether LibreOffice honours `updateFields` on open is not documented; it exposes manual field update (F9). WPS update behaviour is unverified.
+- **[V]** OfficeCLI writes the TOC field and `refresh` (HTML backend) populated cached entries on Linux. **But Word 16 and WPS 12 do not recalculate fields on open** (not even with `updateFields=true`), and display the cached entries verbatim — including OfficeCLI's page numbers, which were **wrong** (2 where Word/WPS compute 1). See `field-recalc-and-cross-app-verification.md`.
+- **[V]** None of Word, WPS, or LibreOffice rebuilds or updates the TOC on open (measured); see `field-recalc-and-cross-app-verification.md`.
 
 ### Sections and margins
 - **[S]** The final `w:sectPr` is a child of `w:body`; other section breaks live in `w:pPr/w:sectPr` of the last paragraph of the preceding section. Type ∈ `nextPage|continuous|evenPage|oddPage|nextColumn`.
@@ -45,8 +45,8 @@ General:
 
 ### Fields generally
 - **[S]** A complex field is `fldChar begin` → `instrText` → `fldChar separate` → cached result → `fldChar end`. `w:updateFields` / `w:dirty` request recalculation; no consumer is contractually required to honour them.
-- **[V]** OfficeCLI writes the full chain; fields without a cache render `#OCLI_NOTEVAL!` and raise `field_not_evaluated`.
-- **[?]** LibreOffice updates fields manually; Word's update-on-open may depend on a global setting.
+- **[V]** OfficeCLI `add field` **always writes a cached result**, so every field reads `evaluated=true` even when its cache is a placeholder (TOC `Update field to see table of contents`; REF `«target»`), and `view issues` reports nothing. Judge a field by its cached **text**. *(Corrects an earlier note here that cited an `#OCLI_NOTEVAL!` sentinel for uncached fields; that does not describe `add field` in 1.0.152 — see `field-recalc-and-cross-app-verification.md` §1.)*
+- **[V]** Word 16, WPS 12 **and LibreOffice 24.2** do **not** update fields on open, even with `updateFields=true`; Word/WPS resolve them correctly on a manual update (F9). LibreOffice additionally resolves `REF` on import but does not rebuild the TOC. See `field-recalc-and-cross-app-verification.md` §3 and §6.
 
 ### Captions / SEQ
 - **[S]** `SEQ` fields (`\* ARABIC`, `\s`, `\r`, `\c`) with a cached result; define the `Caption` style explicitly.
