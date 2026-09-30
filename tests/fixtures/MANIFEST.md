@@ -35,6 +35,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 | Fixture | Tests | Expected construction |
 |---|---|---|
 | `page-number-footer.docx` | A live `PAGE` field in the footer | `/footer[1]` with `field=page`, centred; the footer part holds a begin/instrText/separate/result/end field chain |
+| `firstpage-oddeven.docx` | A different first-page header/footer **and** odd/even headers/footers in one section | `/section[1]` `titlePage=true`; header/footer parts of `type=first`, `type=default` (odd) and `type=even`, each with distinct text; `settings.xml` carries `<w:evenAndOddHeaders/>`; four `pageBreakBefore` pages exercise first/even/odd/even |
 
 ### images/
 

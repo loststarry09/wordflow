@@ -155,6 +155,28 @@ add "$f" /body --type paragraph --prop text="The footer carries a live PAGE fiel
 add "$f" / --type footer --prop field=page --prop align=center
 finish "$f"
 
+# A different first-page header/footer AND odd/even headers/footers in one
+# section. `--type header|footer --prop type=first` sets w:titlePg; adding an
+# `even` part makes OfficeCLI write <w:evenAndOddHeaders/> automatically. The
+# default part is the ODD-page header/footer. Four explicit pages
+# (pageBreakBefore) exercise first (p1), even (p2), default/odd (p3), even (p4).
+f="$FIX/headers/firstpage-oddeven.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop style=Title --prop text="WordFlow Fixture: First-page and odd/even headers/footers"
+add "$f" /body --type paragraph                              --prop text="Page 1 - the title page uses the FIRST-PAGE header and footer."
+add "$f" /body --type paragraph --prop pageBreakBefore=true  --prop text="Page 2 - an even page uses the EVEN header and footer."
+add "$f" /body --type paragraph --prop pageBreakBefore=true  --prop text="Page 3 - an odd page uses the DEFAULT (odd) header and footer."
+add "$f" /body --type paragraph --prop pageBreakBefore=true  --prop text="Page 4 - an even page again uses the EVEN header and footer."
+add "$f" / --type header --prop type=first   --prop text="FIRST-PAGE HEADER" --prop align=center
+add "$f" / --type header --prop type=default --prop text="ODD-PAGE HEADER"   --prop align=center
+add "$f" / --type header --prop type=even    --prop text="EVEN-PAGE HEADER"  --prop align=center
+add "$f" / --type footer --prop type=first   --prop text="FIRST-PAGE FOOTER - page " --prop align=center
+add "$f" / --type footer --prop type=default --prop text="ODD-PAGE FOOTER - page "   --prop align=center
+add "$f" / --type footer --prop type=even    --prop text="EVEN-PAGE FOOTER - page "  --prop align=center
+add "$f" "/footer[1]/p[1]" --type field --prop fieldType=page
+add "$f" "/footer[2]/p[1]" --type field --prop fieldType=page
+add "$f" "/footer[3]/p[1]" --type field --prop fieldType=page
+finish "$f"
+
 # ===========================================================================
 # images/
 # ===========================================================================
