@@ -27,6 +27,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 |---|---|---|
 | `margins-orientation.docx` | Two sections, differing orientation and margins | `nextPage` section break; `/section[1]` portrait A4 + 2.54/3.18 cm margins, `/section[2]` landscape A4 + 1 cm margins |
 | `page-number-restart.docx` | Page numbering format and restart per section | `/section[2]` with `pageNumFmt=lowerRoman`, `pageStart=1` |
+| `page-setup-default.docx` | WordFlow default page setup carried across a section break | Two sections, both A4 portrait with margins 2.54 cm top/bottom and 3.17 cm left/right (spec D6); `/section[1]` carries the `nextPage` break |
 
 ### headers/
 

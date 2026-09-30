@@ -106,6 +106,14 @@ add "$f" /body --type paragraph --prop text="Section 2: lower-roman numbering re
 setp "$f" /section[2] --prop pageNumFmt=lowerRoman --prop pageStart=1
 finish "$f"
 
+f="$FIX/sections/page-setup-default.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop text="Section 1: WordFlow default page setup (A4 portrait, spec D6 margins)."
+add "$f" /                        --type section --prop type=nextPage
+add "$f" /body --type paragraph --prop text="Section 2: the same default page setup, across a nextPage section break."
+setp "$f" /section[1] --prop orientation=portrait --prop pageWidth=21cm --prop pageHeight=29.7cm --prop marginTop=2.54cm --prop marginBottom=2.54cm --prop marginLeft=3.17cm --prop marginRight=3.17cm
+setp "$f" /section[2] --prop orientation=portrait --prop pageWidth=21cm --prop pageHeight=29.7cm --prop marginTop=2.54cm --prop marginBottom=2.54cm --prop marginLeft=3.17cm --prop marginRight=3.17cm
+finish "$f"
+
 # ===========================================================================
 # headers/
 # ===========================================================================
