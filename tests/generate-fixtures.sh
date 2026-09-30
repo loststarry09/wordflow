@@ -87,6 +87,38 @@ add "$f" /body --type paragraph --prop style=WFBody  --prop text="Template body 
 add "$f" /body --type paragraph --prop style=WFQuote --prop text="Template quote sample."
 finish "$f"
 
+# The full WordFlow standard style set with Simplified-Chinese defaults (#17):
+# scripts/wf-standard-styles.sh defines the styles (spec D7) on a fresh zh-CN
+# base, then every style is exercised once. Do not expand the style list.
+f="$FIX/styles/standard-style-set.docx"
+base="$(mktemp -d)/base.docx"; new "$base" zh-CN
+"$ROOT/scripts/wf-standard-styles.sh" "$base" --out "$f" >/dev/null
+finish "$base"; rm -rf "$(dirname "$base")"
+add "$f" /body --type paragraph --prop style=Title     --prop text="WordFlow 标准样式集 Standard Style Set"
+add "$f" /    --type toc --prop levels="1-3" --prop hyperlinks=true --prop pageNumbers=false
+add "$f" /body --type paragraph --prop style=Heading1  --prop text="一级标题 Heading 1"
+add "$f" /body --type paragraph --prop style=Normal    --prop text="正文段落：宋体小四，首行缩进两字符，1.5 倍行距，两端对齐。Body text is justified."
+add "$f" /body --type paragraph --prop style=Heading2  --prop text="二级标题 Heading 2"
+add "$f" /body --type paragraph --prop style=Normal    --prop text="正文段落二：样式集中每一处引用都有定义。"
+add "$f" /body --type paragraph --prop style=Heading3  --prop text="三级标题 Heading 3"
+add "$f" /body --type paragraph --prop style=Normal    --prop text="正文段落三。"
+add "$f" /body --type paragraph --prop style=Heading4  --prop text="四级标题 Heading 4"
+add "$f" /body --type paragraph --prop style=Normal    --prop text="正文段落四。"
+add "$f" /body --type paragraph --prop style=BodyNoIndent --prop text="正文无缩进样式 BodyNoIndent：此行不首行缩进。"
+add "$f" /body --type paragraph --prop style=Quote     --prop text="引用样式 Quote：这是一段引用文字。"
+add "$f" /body --type paragraph --prop style=ListParagraph --prop text="列表段落样式 ListParagraph。"
+add "$f" /body --type paragraph --prop style=Caption   --prop text="图 1：图注表注样式 Caption"
+add "$f" /body --type paragraph --prop text="链接："
+add "$f" /body/p[15] --type hyperlink --prop url=https://example.com --prop text="示例链接" --prop rStyle=Hyperlink
+add "$f" /body --type paragraph --prop text="脚注示例"
+add "$f" /body/p[16] --type footnote --prop text="脚注文本 Footnote text."
+add "$f" / --type header --prop text="页眉 Header" --prop align=center
+add "$f" / --type footer --prop text="页脚 Footer" --prop align=center
+setp "$f" /header[1]/p[1] --prop style=Header
+setp "$f" /footer[1]/p[1] --prop style=Footer
+officecli refresh "$f" >/dev/null 2>&1 || true
+finish "$f"
+
 # ===========================================================================
 # sections/
 # ===========================================================================

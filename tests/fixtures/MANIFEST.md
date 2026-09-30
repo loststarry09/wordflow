@@ -20,6 +20,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 | `caption-dangling.docx` | A `Caption` style referenced but **never defined** | Paragraph `style=Caption` with no `/styles/Caption`; reproduces OfficeCLI's `style 'Caption' not found … referenced as-is` warning |
 | `unstyled.docx` | A document with **no named styles** (the rebuild case) | Three default `Normal` paragraphs, no headings or named styles |
 | `template.docx` | A distinct style set used as a **template** (the template-wins case) | `WFBody` and `WFQuote` styles defined and referenced; used as `--template` in the ownership tests |
+| `standard-style-set.docx` | The frozen WordFlow **standard style set** (spec D7) with the D6 Simplified-Chinese typography; every style defined and used, no dangling reference | 18 styles defined by `scripts/wf-standard-styles.sh` (body SimSun/Times New Roman, headings SimHei/Arial, `hint=eastAsia`, body 12 pt 1.5× 2-char indent justified); paragraphs exercise `Normal`, `BodyNoIndent`, `Title`, `Heading1`–`Heading4`, `Caption`, `Quote`, `ListParagraph`, `TOC1`–`TOC3`, plus a footnote (`FootnoteText`/`FootnoteReference`), a hyperlink (`Hyperlink`), and a header/footer (`Header`/`Footer`) |
 
 ### sections/
 
@@ -95,7 +96,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 
 `officecli view <file> issues` reports style heuristics, not schema errors. Every fixture here passes `officecli validate`; all issues observed are the following two, and they are advisory:
 
-- **`[F] Body paragraph missing first-line indent`** — raised for `Normal` body paragraphs without a 2-character first-line indent. It is an opinionated typography suggestion (Chinese/Japanese style), not an error. It is *suppressed* by `firstLineChars=200` (see `cjk/`).
+- **`[F] Body paragraph missing first-line indent`** — raised for `Normal` body paragraphs without a 2-character first-line indent. It is an opinionated typography suggestion (Chinese/Japanese style), not an error. It is *suppressed* by `firstLineChars=200` (see `cjk/`). It is **not** suppressed by a *style-level* `firstLineChars` (the heuristic reads the paragraph's direct indent only), so `styles/standard-style-set.docx` shows one such advisory per `Normal` paragraph even though the `Normal` style indents them; the rendered result is indented (verified in `tests/standard-styles.sh`).
 - **`[S] Empty paragraph`** — raised for the blank paragraph that carries a section break (see `sections/`). Expected for the section model.
 
 No `field_not_evaluated` issues were raised: every generated field carries a cached result. See `references/research/officecli-behavior.md` for the cross-reference caveat.
