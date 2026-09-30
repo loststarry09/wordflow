@@ -79,6 +79,10 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 |---|---|---|
 | `inline-equation.docx` | Inline OMML equation inside a paragraph | `/body/p[2]/oMath[1]`, `mode=inline`, `E = mc^2` |
 | `display-equation.docx` | Display OMML equation in its own paragraph | `/body/oMathPara[1]`, `mode=display`, `\frac{a}{b} = c` (becomes `m:f` numerator/denominator) |
+| `matrix-equation.docx` | A 3×3 matrix with bracket delimiters (#6) | `mode=display`, `\begin{bmatrix} … \end{bmatrix}`; becomes `m:d` (bracket) wrapping `m:m` with `m:mr`/`m:e` rows and cells |
+| `aligned-equations.docx` | Multi-line aligned equations in one display equation (#6) | `mode=display`, `\begin{aligned} x &= … \\ y &= … \end{aligned}`; the parser emits `m:m` with a 2-column `m:mcs` (right/left justification), **not** `m:eqArr` |
+| `cases-equation.docx` | A piecewise `cases` construct (#6) | `mode=display`, `\begin{cases} … \end{cases}`; becomes `m:d` with `m:begChr={`, empty `m:endChr`, wrapping a 2-column `m:m` |
+| `equation-array.docx` | A true multi-line equation array `m:eqArr` (#6) | `raw-set` replaces the parsed `m:oMath` with an `m:eqArr` fragment (two `m:e` lines) — the FormulaParser cannot emit `m:eqArr` |
 
 ### cjk/
 

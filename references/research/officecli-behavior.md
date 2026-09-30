@@ -54,6 +54,7 @@ See also `references/research/field-recalc-and-cross-app-verification.md` for fi
 - **[V]** `add <f> /body/p[N] --type picture --prop src=… --prop alt=… --prop width=3cm` inserts an inline picture into a run and preserves aspect ratio (height derived from width).
 - **[V]** Anchored pictures accept `anchor=true`, `wrap=topAndBottom` (read back as `topandbottom`), `hRelative`, `vRelative`, `hPosition`, `vPosition`, `behindText`.
 - **[V]** `add <f> /body --type equation --prop mode=inline --prop formula="E = mc^2"` creates `/body/p[N]/oMath[1]`; `mode=display` creates `/body/oMathPara[1]`. `\frac{a}{b}` becomes `m:f` with `m:num`/`m:den`.
+- **[V]** The `FormulaParser` also parses `\begin{matrix|pmatrix|bmatrix|vmatrix}`, `\begin{cases}`, and `\begin{aligned}`; the first three become `m:m` (matrix, delimited forms wrapped in `m:d`), `cases` becomes `m:d`+`m:m`, and `aligned` becomes an `m:m` column pair — it **never** emits `m:eqArr`. See [`complex-equations.md`](./complex-equations.md) for the cross-application fidelity and the raw-set path to `m:eqArr`.
 
 ## Footnotes, bookmarks
 
