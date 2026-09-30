@@ -62,6 +62,7 @@ wordflow/
 ├── CONTEXT.md           # ubiquitous language / glossary
 ├── SKILL.md             # agent-facing entry point (minimal; grows over time)
 ├── .gitignore
+├── scripts/             # reproducible operations that drive OfficeCLI (e.g. style ownership)
 ├── references/          # layout knowledge, disclosed on demand (see references/README.md)
 │   ├── README.md
 │   ├── core/            # styles, headings, sections, margins, headers/footers

@@ -74,6 +74,19 @@ add "$f" /body --type paragraph                        --prop text="A Caption st
 add "$f" /body --type paragraph --prop style=Caption   --prop text="Figure 1: Caption with no matching styles.xml entry."
 finish "$f"
 
+f="$FIX/styles/unstyled.docx"; new "$f" en-US
+add "$f" /body --type paragraph                        --prop text="This document uses no named styles."
+add "$f" /body --type paragraph                        --prop text="Every paragraph is the default Normal style."
+add "$f" /body --type paragraph                        --prop text="There is no heading hierarchy to preserve."
+finish "$f"
+
+f="$FIX/styles/template.docx"; new "$f" en-US
+add "$f" /styles --type style --prop styleId=WFBody --prop name="WF Body" --prop type=paragraph --prop basedOn=Normal --prop qFormat=true --prop align=left --prop spaceAfter=6pt
+add "$f" /styles --type style --prop styleId=WFQuote --prop name="WF Quote" --prop type=paragraph --prop basedOn=Normal --prop qFormat=true --prop align=left --prop spaceBefore=6pt --prop spaceAfter=6pt
+add "$f" /body --type paragraph --prop style=WFBody  --prop text="Template body sample."
+add "$f" /body --type paragraph --prop style=WFQuote --prop text="Template quote sample."
+finish "$f"
+
 # ===========================================================================
 # sections/
 # ===========================================================================

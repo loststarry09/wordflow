@@ -18,6 +18,8 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 | `heading-hierarchy.docx` | Heading styles and outline levels; OfficeCLI auto-defines built-in heading styles | `Title`, `Heading1`, `Heading2`, `Heading3` paragraphs with body text; `viewport outline` shows the tree |
 | `caption-defined.docx` | A `Caption` style defined **before** use | `/styles/Caption` added explicitly, then referenced by a paragraph |
 | `caption-dangling.docx` | A `Caption` style referenced but **never defined** | Paragraph `style=Caption` with no `/styles/Caption`; reproduces OfficeCLI's `style 'Caption' not found … referenced as-is` warning |
+| `unstyled.docx` | A document with **no named styles** (the rebuild case) | Three default `Normal` paragraphs, no headings or named styles |
+| `template.docx` | A distinct style set used as a **template** (the template-wins case) | `WFBody` and `WFQuote` styles defined and referenced; used as `--template` in the ownership tests |
 
 ### sections/
 
