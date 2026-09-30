@@ -36,6 +36,12 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 |---|---|---|
 | `page-number-footer.docx` | A live `PAGE` field in the footer | `/footer[1]` with `field=page`, centred; the footer part holds a begin/instrText/separate/result/end field chain |
 
+### multipage/
+
+| Fixture | Tests | Expected construction |
+|---|---|---|
+| `page-fields.docx` | Per-page page-number behaviour on a **multi-page** document without a manual F9: footer `PAGE` + `NUMPAGES`, a body `PAGEREF`, and a `TOC` with page numbers (issue #3) | Three explicit `pagebreak`s force exactly 4 pages (title + three breaks + page-4 content). Footer is `"Page " + PAGE + " of " + NUMPAGES`; page 4 has `PAGEREF target` to a bookmark on page 3; a `TOC \o "1-2"` lists the four headings; `refresh` run. Cached values are `PAGE=1`, `NUMPAGES=1`, `PAGEREF=1` (`refresh`'s HTML pagination), yet Word, WPS, and LibreOffice each render `Page 1 of 4` … `Page 4 of 4` and `on page 3` per page. See `references/research/multipage-page-fields.md`. |
+
 ### images/
 
 | Fixture | Tests | Expected construction |
