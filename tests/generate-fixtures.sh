@@ -264,4 +264,39 @@ add "$f" /body --type paragraph --prop style=Heading1 --prop text="Transitional 
 add "$f" /body --type paragraph --prop text="This document is emitted in Transitional OOXML, not Strict."
 finish "$f"
 
+# ===========================================================================
+# multipage/ — multi-page page-number field behaviour (issue #3)
+# ===========================================================================
+# Forcing the page count with explicit page breaks keeps the true page number
+# of every element deterministic in Word, WPS, and LibreOffice, so a stale or
+# frozen cached field can be told apart from a per-page value. Page 1 holds the
+# title; a break ends each of the first three pages; page 4 carries a body
+# PAGEREF to a bookmark on page 3; a TOC field (page numbers on) lists the four
+# headings. The footer is "Page <PAGE> of <NUMPAGES>". refresh fills the TOC
+# and PAGEREF caches with officecli's HTML-pagination values.
+
+f="$FIX/multipage/page-fields.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop style=Title    --prop text="Multipage page-field fixture"
+add "$f" /body --type paragraph --prop style=Heading1 --prop text="Section One"
+add "$f" /body --type paragraph                       --prop text="Body text on page one."
+add "$f" /body --type pagebreak
+add "$f" /body --type paragraph --prop style=Heading1 --prop text="Section Two"
+add "$f" /body --type paragraph                       --prop text="Body text on page two."
+add "$f" /body --type pagebreak
+add "$f" /body --type paragraph --prop style=Heading1 --prop text="Section Three"
+add "$f" /body --type paragraph                       --prop text="Bookmark target paragraph: "
+add "$f" /    --type bookmark --prop name=target --prop text="TARGET"
+add "$f" /body --type paragraph                       --prop text="Body text still on page three."
+add "$f" /body --type pagebreak
+add "$f" /body --type paragraph --prop style=Heading1 --prop text="Section Four"
+add "$f" /body --type paragraph                       --prop text="Reference to target is on page "
+add "$f" /body/p[14] --type field --prop fieldType=pageref --prop name=target --prop hyperlink=true
+add "$f" /    --type toc --prop levels="1-2" --prop title="Contents" --prop hyperlinks=true --prop pageNumbers=true
+add "$f" /    --type footer --prop text="Page " --prop align=center
+add "$f" "/footer[1]/p[1]" --type field --prop fieldType=page
+add "$f" "/footer[1]/p[1]" --type run  --prop text=" of "
+add "$f" "/footer[1]/p[1]" --type field --prop fieldType=numpages
+officecli refresh "$f" >/dev/null 2>&1 || true
+finish "$f"
+
 echo "Done. Verify with: tests/validate-fixtures.sh"
