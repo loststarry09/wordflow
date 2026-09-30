@@ -62,6 +62,13 @@ Measured from each application's own PDF export, read per page with `pdftotext -
 - **[V]** All three applications also show the correct target page (`3`) in the body `PAGEREF`,
   although its cached value is `1`.
 
+- **[S]** In OOXML a complex field stores its instruction between `w:fldChar begin` / `w:instrText`
+  and an *optional* cached result between `w:fldChar separate` and `w:fldChar end` (ECMA-376
+  §17.16, field structure). The **instruction** defines the value; the cache is a stored snapshot
+  that a consumer may regenerate. `PAGE` and `NUMPAGES` are layout-dependent instructions, so a
+  consumer that paginates is expected to produce their result itself — which is exactly what the
+  applications do below, regardless of the stale cached snapshot OfficeCLI wrote.
+
 ## Why: the cache is not what is displayed (proof by field lock)
 
 `w:fldLock` (exposed by OfficeCLI as `--prop fldLock=true`) tells Word **not** to update the
