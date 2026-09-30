@@ -273,6 +273,34 @@ add "$f" /body --type paragraph --prop text="A display equation in its own parag
 add "$f" /body --type equation --prop mode=display --prop formula="\\frac{a}{b} = c"
 finish "$f"
 
+# Complex OMML constructs (#6). The FormulaParser is LaTeX-ish: `\begin{env}`
+# with `&` column and `\\` row separators; single-quoted formula args keep the
+# backslashes literal. The parser emits `m:m` (matrix) for matrix/array/aligned
+# and `m:d` (delimiter) wrappers for bmatrix/pmatrix/cases; it never emits
+# `m:eqArr`, so the equation array is built by replacing the parsed `m:oMath`
+# with a raw `m:eqArr` fragment via `raw-set` (the DOM layer cannot express it).
+
+f="$FIX/equations/matrix-equation.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop text="A 3x3 bracketed matrix as a display equation:"
+add "$f" /body --type equation --prop mode=display --prop 'formula=\begin{bmatrix} a & b & c \\ d & e & f \\ g & h & i \end{bmatrix}'
+finish "$f"
+
+f="$FIX/equations/aligned-equations.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop text="Multi-line aligned equations (one display equation):"
+add "$f" /body --type equation --prop mode=display --prop 'formula=\begin{aligned} (a+b)^2 &= a^2 + 2ab + b^2 \\ (a-b)^2 &= a^2 - 2ab + b^2 \end{aligned}'
+finish "$f"
+
+f="$FIX/equations/cases-equation.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop text="A piecewise definition with a cases brace:"
+add "$f" /body --type equation --prop mode=display --prop 'formula=|x| = \begin{cases} x & x \ge 0 \\ -x & x < 0 \end{cases}'
+finish "$f"
+
+f="$FIX/equations/equation-array.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop text="A two-line equation array (m:eqArr), built with raw-set:"
+add "$f" /body --type equation --prop mode=display --prop 'formula=x = 1'
+officecli raw-set "$f" /document --xpath '//m:oMath' --action replace --xml '<m:oMath><m:eqArr><m:e><m:r><m:t>x + y = 3</m:t></m:r></m:e><m:e><m:r><m:t>x - y = 1</m:t></m:r></m:e></m:eqArr></m:oMath>' >/dev/null
+finish "$f"
+
 # ===========================================================================
 # cjk/
 # ===========================================================================
