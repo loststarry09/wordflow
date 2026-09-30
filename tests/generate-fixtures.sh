@@ -311,6 +311,34 @@ add "$f" /body --type paragraph --prop text="第二段：验证以字符为单�
 setp "$f" /body/p[2] --prop firstLineChars=200
 finish "$f"
 
+# Chinese punctuation, kinsoku (禁则) line-breaking, and punctuation compression
+# (#7). The long paragraphs place a forbidden (行首/行尾) punctuation exactly on the
+# wrap boundary so the rendered line starts/ends can be compared across Word, WPS
+# and LibreOffice: with these margins the text width is 8312 twips, and
+# rightIndent=1112 leaves exactly 7200 twips = 30 full-width 12 pt characters per
+# line. A closing punctuation placed after 30 ideographs would therefore start the
+# next line unless the application applies kinsoku. Later paragraphs exercise
+# adjacent punctuation (标点压缩), mixed CJK+Latin, and a long Latin token.
+f="$FIX/cjk/cjk-punctuation-kinsoku.docx"; new "$f" zh-CN
+setp "$f" /section[1] --prop pageWidth=21cm --prop pageHeight=29.7cm \
+  --prop marginLeft=3.17cm --prop marginRight=3.17cm \
+  --prop marginTop=2.54cm --prop marginBottom=2.54cm
+add "$f" /body --type paragraph --prop text="CJK 标点与禁则 / punctuation, kinsoku and compression (#7)"
+F30="$(printf '文%.0s' {1..30})"; F29="$(printf '文%.0s' {1..29})"; F10="$(printf '文%.0s' {1..10})"; F8="$(printf '文%.0s' {1..8})"
+cjkpara() { # cjkpara <text>  — body metrics (SimSun 12 pt), 30 full-width chars/line
+  add "$f" /body --type paragraph --prop text="$1" \
+    --prop font.ea=SimSun --prop font.latin="Times New Roman" --prop font.hint=eastAsia \
+    --prop size=12 --prop rightIndent=1112 --prop firstLineIndent=0
+}
+cjkpara "${F30}，逗号不应出现在行首；这是收尾标点的行首禁则测试，继续补充文字使段落更长。${F10}。"
+cjkpara "${F29}“开引号不应出现在行尾；这是起首标点的行尾禁则测试，继续补充文字使段落更长。${F10}”结束。"
+cjkpara "${F30}（左括号位于行首应被压缩；右括号位于行尾应被拉到下一行。继续补充文字。${F8}）。"
+cjkpara "标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。"
+cjkpara "中西文混排 中文abc中文123中文DEF中文 空格与拉丁字母混排 internationalization 混排结束。"
+cjkpara "这个很长的英文单词不应该被随意断开：supercalifragilisticexpialidocious 结束。"
+cjkpara "这是一段没有标点的中文文本用于对照它应当每三十个全角字符换行一次并且行首行尾都没有标点符号这是一段没有标点的中文文本用于对照它应当每三十个全角字符换行一次并且行首行尾都没有标点符号这是一段没有标点的中文文本用于对照它应当每三十个全角字符换行一次并且行首行尾都没有标点符号"
+finish "$f"
+
 # ===========================================================================
 # portability/
 # ===========================================================================

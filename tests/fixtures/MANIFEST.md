@@ -97,6 +97,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 | Fixture | Tests | Expected construction |
 |---|---|---|
 | `cjk-fonts-indent.docx` | East-Asian fonts plus character-unit first-line indent | Two Chinese paragraphs with `font.ea` set (`SimSun`, then `Microsoft YaHei`); `/body/p[2]` `firstLineChars=200` |
+| `cjk-punctuation-kinsoku.docx` | Chinese punctuation, kinsoku (禁则) line-breaking, and punctuation compression (标点压缩) across Word/WPS/LibreOffice (#7) | A4, margins 2.54/3.17 cm, body metrics (SimSun + Times New Roman, `hint=eastAsia`, 12 pt); `rightIndent=1112` leaves exactly 30 full-width characters per line, so a forbidden (行首/行尾) punctuation placed after 30 ideographs would start the next line unless kinsoku applies. Paragraphs: closing `，` at a would-be line start; opening `“` at a would-be line end; `（`/`）` bracket pair; a punctuation-dense block (`。”` `……` `——` `【】` `？！` `《》`); mixed CJK/Latin/digit with a long Latin token; and a no-punctuation control |
 
 ### portability/
 
@@ -110,6 +111,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 
 - **`[F] Body paragraph missing first-line indent`** — raised for `Normal` body paragraphs without a 2-character first-line indent. It is an opinionated typography suggestion (Chinese/Japanese style), not an error. It is *suppressed* by `firstLineChars=200` (see `cjk/`). It is **not** suppressed by a *style-level* `firstLineChars` (the heuristic reads the paragraph's direct indent only), so `styles/standard-style-set.docx` shows one such advisory per `Normal` paragraph even though the `Normal` style indents them; the rendered result is indented (verified in `tests/standard-styles.sh`).
 - **`[S] Empty paragraph`** — raised for the blank paragraph that carries a section break (see `sections/`). Expected for the section model.
+- **`[F] Body paragraph missing first-line indent`** and **`[C] Duplicate punctuation`** in `cjk/cjk-punctuation-kinsoku.docx` — both expected. That fixture sets `firstLineIndent=0` deliberately so the wrap boundary is exactly 30 full-width characters per line (the whole point of the fixture), and its punctuation-dense paragraph repeats a sentence to force line-end decisions, which the duplicate-punctuation heuristic flags. Both are advisory; `officecli validate` passes.
 
 No `field_not_evaluated` issues were raised: every generated field carries a cached result. See `references/research/officecli-behavior.md` for the cross-reference caveat.
 
