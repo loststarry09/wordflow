@@ -197,7 +197,7 @@ finish "$f"
 
 f="$FIX/tables/fixed-table.docx"; new "$f" en-US
 add "$f" /body --type paragraph --prop text="Fixed-layout 3x3 table, explicit column widths, direct borders, repeating header row."
-add "$f" /body --type table --prop data="Column A,Column B,Column C;A1,B1,C1;A2,B2,C2;A3,B3,C3" --prop layout=fixed --prop colWidths=3000,3000,3000 --prop width=9cm --prop border.all="single;8;000000"
+add "$f" /body --type table --prop data="Column A,Column B,Column C;A1,B1,C1;A2,B2,C2;A3,B3,C3" --prop layout=fixed --prop colWidths=1701,1701,1700 --prop width=9cm --prop border.all="single;8;000000"
 setp "$f" /body/tbl[1]/tr[1] --prop header=true
 finish "$f"
 

@@ -54,7 +54,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 
 | Fixture | Tests | Expected construction |
 |---|---|---|
-| `fixed-table.docx` | Fixed layout, explicit widths, direct borders, repeating header row | 4x3 table, `layout=fixed`, `colWidths=3000,3000,3000`, `width=9cm`, `border.all="single;8;000000"`, `tr[1]/header=true` |
+| `fixed-table.docx` | Fixed layout, explicit widths, direct borders, repeating header row | 4x3 table, `layout=fixed`, `colWidths=1701,1701,1700` (Σ = 5102 = `width=9cm`), `border.all="single;8;000000"`, `tr[1]/header=true` |
 | `nested-table.docx` | A table nested inside a table cell, measured for cross-application portability (#4) | 2x3 outer fixed table (`colWidths=3402,3402`, `width=12cm`, black direct borders); a 2x2 inner fixed table at `/body/tbl[1]/tr[2]/tc[1]/tbl[1]` (`colWidths=1418,1417`, `width=5cm`, red `C00000` direct borders) |
 
 ### captions/
