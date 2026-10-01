@@ -56,6 +56,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 |---|---|---|
 | `fixed-table.docx` | Fixed layout, explicit widths, direct borders, repeating header row | 4x3 table, `layout=fixed`, `colWidths=1701,1701,1700` (Σ = 5102 = `width=9cm`), `border.all="single;8;000000"`, `tr[1]/header=true` |
 | `nested-table.docx` | A table nested inside a table cell, measured for cross-application portability (#4) | 2x3 outer fixed table (`colWidths=3402,3402`, `width=12cm`, black direct borders); a 2x2 inner fixed table at `/body/tbl[1]/tr[2]/tc[1]/tbl[1]` (`colWidths=1418,1417`, `width=5cm`, red `C00000` direct borders) |
+| `merged-table.docx` | A merged-cell table: a horizontal span (`colspan`) and a vertical merge (`vmerge` restart/continue) (#21) | 4x3 fixed table (`colWidths=1701,1701,1700`, `width=9cm`, black direct borders); `/body/tbl[1]/tr[1]/tc[1]` `colspan=2` (w:gridSpan), `/body/tbl[1]/tr[2]/tc[1]` `vmerge=restart`, `/body/tbl[1]/tr[3]/tc[1]` `vmerge=continue` (w:vMerge); the continuation cell is empty in the data. See `references/objects/tables.md` |
 
 ### captions/
 
