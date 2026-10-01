@@ -133,7 +133,8 @@ cp -f "$src_abs" "$out_abs"
 # created (empty) when the document has no paragraph yet.
 PARA="${PARA:-/body/p[1]}"
 para_json="$(timeout 60 officecli get "$out_abs" "$PARA" --json 2>/dev/null || true)"
-para_ok="$(jq -r '(.success // false) and (.data.results[0].type // "") == "paragraph"' <<<"${para_json:-{}}" 2>/dev/null || echo false)"
+[[ -n "$para_json" ]] || para_json='{}'
+para_ok="$(jq -r '(.success // false) and (.data.results[0].type // "") == "paragraph"' <<<"$para_json" 2>/dev/null || echo false)"
 if [[ "$para_ok" != "true" ]]; then
   if [[ "$PARA" == "/body/p[1]" ]]; then
     timeout 60 officecli add "$out_abs" /body --type paragraph >/dev/null
