@@ -68,6 +68,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 | Fixture | Tests | Expected construction |
 |---|---|---|
 | `bookmark-ref-pageref.docx` | Bookmark, `REF` and `PAGEREF` cross-references | Bookmark `target`; paragraph `"Reference: "` + `REF target \h` + `" on page "` + `PAGEREF target \h`; `refresh` run |
+| `cached-cross-ref.docx` | Content cross-references whose **cached result is the resolved target text**, never the `«target»` placeholder (#12) | Heading bookmark `sec_intro` around `Introduction` and a caption's label bookmark `fig_demo` around plain-text `Figure 1`; paragraph `"See section "` + `REF sec_intro` + `" and "` + `REF fig_demo` + `" for details."`. Each `REF` result run is then written with the resolved text (`set`) and the `w:dirty` marker cleared (`raw-set`). Opens repair-free in Word/WPS/LibreOffice, all showing `See section Introduction and Figure 1 for details.` See `references/fields/cached-cross-references.md`. |
 
 ### toc/
 
@@ -118,5 +119,5 @@ No `field_not_evaluated` issues were raised: every generated field carries a cac
 ## Known OfficeCLI limitations these fixtures expose
 
 - A referenced but undefined style (e.g. `Caption`) stays dangling; only a small set of built-ins (`Title`, `Heading1`–`Heading9`, …) are auto-defined. See `styles/caption-dangling.docx`.
-- `REF` cached text stays the placeholder `«target»` after `refresh` (the HTML backend resolves `PAGEREF` but not `REF`). See `fields/bookmark-ref-pageref.docx` and the research note.
+- `REF` cached text stays the placeholder `«target»` after `refresh` (the HTML backend resolves `PAGEREF` but not `REF`). See `fields/bookmark-ref-pageref.docx` and the research note. **Workaround (#12):** write the resolved text into the `REF` result run and clear the `w:dirty` marker with `raw-set`; see `fields/cached-cross-ref.docx` and `references/fields/cached-cross-references.md`. A bookmark that spans a nested field result (e.g. an auto-numbered `SEQ` caption label) resolves differently in LibreOffice than in Word/WPS, so bookmark plain text.
 - A resident process leaks edits into the next file if it is not closed first; the generator and validator `close` each file after use.

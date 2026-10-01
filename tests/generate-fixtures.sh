@@ -47,6 +47,19 @@ setp() { # setp <file> <path> <args...>
   officecli set "$f" "$p" "$@" >/dev/null
 }
 
+# Write a field's cached result (a REF content cross-reference, #12), then clear
+# the w:dirty marker OfficeCLI adds when the cached result changes. Writing the
+# cache is a `set` on the field's result run; clearing dirty is raw-set because
+# the field element exposes no `dirty` property. See
+# references/fields/cached-cross-references.md.
+clear_field_dirty() { # <file>
+  officecli raw-set "$1" /document \
+    --xpath '//w:fldChar[@w:fldCharType="begin" and @w:dirty="true"]' \
+    --action replace \
+    --xml '<w:fldChar w:fldCharType="begin"/>' \
+    >/dev/null 2>&1 || true
+}
+
 echo "Generating fixtures in $FIX"
 
 # ===========================================================================
@@ -232,6 +245,28 @@ add "$f" /body/p[3] --type field --prop fieldType=ref --prop name=target --prop 
 add "$f" /body/p[3] --type run --prop text=" on page "
 add "$f" /body/p[3] --type field --prop fieldType=pageref --prop name=target --prop hyperlink=true
 officecli refresh "$f" >/dev/null 2>&1 || true
+finish "$f"
+
+# A content cross-reference whose cached result is the resolved target text (#12).
+# `add field` caches the placeholder «target»; the resolved text is written into
+# the REF result runs and the resulting w:dirty marker is cleared, so Word/WPS
+# (which never update on open) display the correct text and the field is not a
+# stale/placeholder cache. The bookmark covers exactly the text to insert: the
+# heading text, and the caption's plain-text label "Figure 1".
+f="$FIX/fields/cached-cross-ref.docx"; new "$f" en-US
+add "$f" /styles --type style --prop styleId=Caption --prop name="caption" --prop type=paragraph --prop basedOn=Normal --prop qFormat=true --prop align=center
+add "$f" / --type bookmark --prop name=sec_intro --prop text="Introduction"
+setp "$f" /body/p[1] --prop style=Heading1
+add "$f" /body --type paragraph --prop style=Caption --prop text="Figure 1: Cached cross-reference demonstration."
+add "$f" /body/p[2] --type bookmark --prop name=fig_demo --prop text="Figure 1"
+add "$f" /body --type paragraph --prop text="See section "
+add "$f" /body/p[3] --type field --prop fieldType=ref --prop name=sec_intro
+add "$f" /body/p[3] --type run --prop text=" and "
+add "$f" /body/p[3] --type field --prop fieldType=ref --prop name=fig_demo
+add "$f" /body/p[3] --type run --prop text=" for details."
+setp "$f" /body/p[3]/r[5]  --prop text="Introduction"
+setp "$f" /body/p[3]/r[11] --prop text="Figure 1"
+clear_field_dirty "$f"
 finish "$f"
 
 # ===========================================================================
