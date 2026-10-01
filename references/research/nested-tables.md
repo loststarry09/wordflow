@@ -66,10 +66,10 @@ While building the probe, one draft used `width=9cm` (tblW = 5102 twips) with
 - **[V]** When `tblW` was made equal to Σ`colWidths` (12 cm = 6804 twips), **all three
   agreed**, and the three renders became byte-identical.
 - **Consequence:** the portable construction is to keep `width` and the sum of
-  `colWidths` consistent. `tests/fixtures/tables/fixed-table.docx` is internally
-  inconsistent (`colWidths=3000,3000,3000` = 9000 twips vs `width=9cm` = 5102 twips) and
-  is therefore expected to show the same Word/LO-vs-WPS width divergence; that is a
-  separate regular-table issue, out of scope for #4.
+  `colWidths` consistent. An early draft of `tests/fixtures/tables/fixed-table.docx` was
+  internally inconsistent (`colWidths=3000,3000,3000` = 9000 twips vs `width=9cm` = 5102
+  twips) and showed the same Word/LO-vs-WPS width divergence; it has since been corrected
+  to `colWidths=1701,1701,1700` (Σ = 5102 = `width=9cm`) — see #39.
 
 ## Exploratory probe — deeper nesting (LibreOffice only)
 
@@ -118,8 +118,9 @@ While building the probe, one draft used `width=9cm` (tblW = 5102 twips) with
   "Merged-cell tables are promoted to fully supported; nested tables stay limited (D9)"
   in §Further Notes is now contradicted by measurement. Resolving it is a spec-owner edit
   (this research file does not change the spec).
-- `tests/fixtures/tables/fixed-table.docx`'s `colWidths`/`width` mismatch (above) deserves
-  its own check if regular-table portability is re-verified.
+- ~~`tests/fixtures/tables/fixed-table.docx`'s `colWidths`/`width` mismatch~~ — corrected
+  in #39; `tblW == ΣcolWidths` now holds. A dedicated regular-table portability re-check
+  remains a candidate when tables (#21) are implemented.
 
 ## Untested / open
 
