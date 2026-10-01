@@ -39,6 +39,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHANGE_REPORT="$SCRIPT_DIR/wf-change-report.sh"
 HARNESS="$SCRIPT_DIR/wf-compat-harness.sh"
+RISK="$SCRIPT_DIR/wf-risk-policy.sh"
 readonly TOOL="wf-qa.sh"
 readonly TMO="timeout 60"
 
@@ -172,14 +173,17 @@ if [[ -n "$REPORT" ]]; then
 fi
 
 # --- 6. every limited construct is reported (no silent downgrade) -----------
+# Codes come from the risk policy (#30) — never hardcoded here — so the trigger
+# table stays defined once (see references/workflow/risk-policy.md).
+risk_code() { "$RISK" decide --trigger "$1" --json 2>/dev/null | jq -r '.code // ""' 2>/dev/null || true; }
 detected=()
 anchored="$($TMO officecli query "$out_abs" 'picture[anchor=true]' --json 2>/dev/null | jq -r '.data.matches // 0' 2>/dev/null || echo 0)"
-[[ "$anchored" =~ ^[0-9]+$ ]] && (( anchored > 0 )) && detected+=("D11-floating-image")
+if [[ "$anchored" =~ ^[0-9]+$ ]] && (( anchored > 0 )); then detected+=("$(risk_code floating-image)"); fi
 nested="$($TMO officecli query "$out_abs" 'table table' --json 2>/dev/null | jq -r '.data.matches // 0' 2>/dev/null || echo 0)"
-[[ "$nested" =~ ^[0-9]+$ ]] && (( nested > 0 )) && detected+=("D11-nested-table")
+if [[ "$nested" =~ ^[0-9]+$ ]] && (( nested > 0 )); then detected+=("$(risk_code nested-table)"); fi
 sec_json="$($TMO officecli query "$out_abs" section --json 2>/dev/null || echo '{}')"
 restart="$(jq -r '[.data.results[]? | select(.format.pageStart != null)] | length' <<<"$sec_json" 2>/dev/null || echo 0)"
-[[ "$restart" =~ ^[0-9]+$ ]] && (( restart > 0 )) && detected+=("D11-page-number-restart")
+if [[ "$restart" =~ ^[0-9]+$ ]] && (( restart > 0 )); then detected+=("$(risk_code page-number-restart)"); fi
 
 if (( ${#detected[@]} == 0 )); then
   record constructs-reported skip "no limited construction detected in the output"
