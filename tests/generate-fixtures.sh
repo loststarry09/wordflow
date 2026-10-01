@@ -220,6 +220,20 @@ add "$f" /body --type table --prop data="Outer A,Outer B;nested cell,outer right
 add "$f" /body/tbl[1]/tr[2]/tc[1] --type table --prop data="Inner 1,Inner 2;Inner 3,Inner 4" --prop layout=fixed --prop colWidths=1418,1417 --prop width=5cm --prop border.all="single;8;C00000"
 finish "$f"
 
+# Merged-cell table (#21). OfficeCLI exposes the merge semantics as native cell
+# properties: `colspan` writes w:gridSpan (and drops the now-redundant trailing
+# cells) and `vmerge=restart|continue` writes w:vMerge. The first row joins
+# columns 1-2; column 1 rows 2-3 are a vertical merge (the continuation cell is
+# left empty in the data). Portable construction: fixed + explicit colWidths +
+# direct borders + tblW == sum(colWidths). See references/objects/tables.md.
+f="$FIX/tables/merged-table.docx"; new "$f" en-US
+add "$f" /body --type paragraph --prop text="Merged-cell table: a 2-column horizontal span in row 1 and a 2-row vertical merge in column 1."
+add "$f" /body --type table --prop data="Region,Quarter,Sales;North,Q1,100;,Q2,120;South,Q1,90" --prop layout=fixed --prop colWidths=1701,1701,1700 --prop width=9cm --prop border.all="single;8;000000"
+setp "$f" /body/tbl[1]/tr[1]/tc[1] --prop colspan=2
+setp "$f" /body/tbl[1]/tr[2]/tc[1] --prop vmerge=restart
+setp "$f" /body/tbl[1]/tr[3]/tc[1] --prop vmerge=continue
+finish "$f"
+
 # ===========================================================================
 # captions/
 # ===========================================================================
