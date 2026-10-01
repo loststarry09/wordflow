@@ -174,6 +174,34 @@ else
 fi
 assert_eq "inline: report records the placement" \
   "$(jq -r '[.changed[]? | select(test("placed an inline image"; "i"))] | length' "$rep")" "1"
+# The default target is the existing /body/p[1]; no paragraph may be injected.
+assert_eq "inline: no extra paragraph injected (default path)" \
+  "$(officecli query "$out" paragraph --json 2>/dev/null | jq -r '.data.results | length')" \
+  "$(officecli query "$src" paragraph --json 2>/dev/null | jq -r '.data.results | length')"
+
+# ---------------------------------------------------------------------------
+# 2b. An explicit --para places the image in that paragraph, with no extra
+#     paragraph injected (regression guard).
+# ---------------------------------------------------------------------------
+para_src="$WORK/para-src.docx"
+$TMO officecli close "$para_src" >/dev/null 2>&1 || true
+rm -f "$para_src"
+$TMO officecli create "$para_src" --locale en-US >/dev/null
+$TMO officecli add "$para_src" /body --type paragraph --prop text="First paragraph." >/dev/null
+$TMO officecli add "$para_src" /body --type paragraph --prop text="Second paragraph (image target)." >/dev/null
+$TMO officecli add "$para_src" /body --type paragraph --prop text="Third paragraph." >/dev/null
+$TMO officecli close "$para_src" >/dev/null 2>&1 || true
+para_before="$(officecli query "$para_src" paragraph --json 2>/dev/null | jq -r '.data.results | length')"
+p2_pid="$(officecli get "$para_src" /body/p[2] --json 2>/dev/null | jq -r '.data.results[0].format.paraId // ""')"
+
+outp="$WORK/explicit-para.docx"
+run_tool "$para_src" --image "$IMG" --out "$outp" --para /body/p[2] --width 2cm --json
+assert_eq "explicit --para: run exits 0" "$TOOL_RC" "0"
+assert_eq "explicit --para: one picture" "$(pics_count "$outp")" "1"
+assert_eq "explicit --para: no extra paragraph" \
+  "$(officecli query "$outp" paragraph --json 2>/dev/null | jq -r '.data.results | length')" "$para_before"
+assert_eq "explicit --para: image is in p[2]" \
+  "$(pics_json "$outp" | jq -r --arg pid "$p2_pid" '[.data.results[]? | select((.path // "") | contains("paraId=" + $pid))] | length')" "1"
 
 # ---------------------------------------------------------------------------
 # 3. A requested anchored image is downgraded, and the downgrade is recorded
