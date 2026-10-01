@@ -250,6 +250,31 @@ add "$f" /body --type paragraph --prop text="Methods body text."
 officecli refresh "$f" >/dev/null 2>&1 || true
 finish "$f"
 
+# TOC cached without page numbers (#11, spec D9). `pageNumbers=false` makes
+# OfficeCLI emit `TOC \o "1-3" \h \z \u`; `refresh` then fills the cached result
+# with heading entries and hyperlinks but no tab/PAGEREF page-number reference.
+# TOC1-TOC3 are defined up front so the refreshed entries reference only defined
+# styles (no dangling style). Headings are forced onto pages 1, 2 and 3 with page
+# breaks so the test proves the cache carries no page number, not merely "1".
+# On open Word/WPS/LibreOffice display the cache verbatim (entries, no numbers);
+# a manual F9 / Update TOC rebuilds the field and adds the correct page numbers.
+f="$FIX/toc/toc-no-page-numbers.docx"; new "$f" en-US
+add "$f" /styles --type style --prop styleId=TOC1 --prop name="TOC 1" --prop type=paragraph --prop basedOn=Normal --prop qFormat=true --prop align=left
+add "$f" /styles --type style --prop styleId=TOC2 --prop name="TOC 2" --prop type=paragraph --prop basedOn=Normal --prop qFormat=true --prop align=left
+add "$f" /styles --type style --prop styleId=TOC3 --prop name="TOC 3" --prop type=paragraph --prop basedOn=Normal --prop qFormat=true --prop align=left
+add "$f" /body --type paragraph --prop style=Title    --prop text="WordFlow Fixture: TOC Without Page Numbers"
+add "$f" /    --type toc      --prop levels="1-3" --prop hyperlinks=true --prop pageNumbers=false
+add "$f" /body --type paragraph --prop style=Heading1 --prop text="Alpha Section"
+add "$f" /body --type paragraph                       --prop text="Body text under Alpha, on page one."
+add "$f" /body --type pagebreak
+add "$f" /body --type paragraph --prop style=Heading1 --prop text="Beta Section"
+add "$f" /body --type paragraph                       --prop text="Body text under Beta, on page two."
+add "$f" /body --type pagebreak
+add "$f" /body --type paragraph --prop style=Heading2 --prop text="Gamma Subsection"
+add "$f" /body --type paragraph                       --prop text="Body text under Gamma, on page three."
+officecli refresh "$f" >/dev/null 2>&1 || true
+finish "$f"
+
 # ===========================================================================
 # notes/
 # ===========================================================================
