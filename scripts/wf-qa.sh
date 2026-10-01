@@ -103,6 +103,14 @@ abs() { local d; d="$(cd "$(dirname "$1")" && pwd)"; printf '%s/%s\n' "$d" "$(ba
 out_abs="$(abs "$OUT")"
 sha_of() { sha256sum "$1" | awk '{print $1}'; }
 
+# Release residents so the gate leaves no OfficeCLI process holding a document.
+cleanup() {
+  officecli close "$out_abs" >/dev/null 2>&1 || true
+  [[ -n "$REPRO" ]] && officecli close "$(abs "$REPRO")" >/dev/null 2>&1 || true
+  return 0
+}
+trap cleanup EXIT
+
 # --- result collection ------------------------------------------------------
 declare -a R_ID R_STATUS R_DETAIL
 pass_n=0; fail_n=0; skip_n=0
