@@ -175,7 +175,7 @@ fi
 # 6. A relative --out must be absolutised, not fed to LibreOffice as file:// (#38)
 # ---------------------------------------------------------------------------
 relroot="tests/.out/compat-rel"
-rm -rf "$ROOT/$relroot"
+rm -rf "${ROOT:?}/$relroot"
 ( cd "$ROOT" && timeout 120 "$TOOL" "$LO_FIX" --out "$relroot" --apps libreoffice --timeout 90 --json > "$OUTROOT/rel.json" 2>/dev/null )
 rc=$?
 assert_eq "relative --out: harness exits (no hang)" "$rc" "0"
