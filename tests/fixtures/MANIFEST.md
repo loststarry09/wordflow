@@ -74,6 +74,7 @@ Fixtures are committed as snapshots. OfficeCLI stamps `created`/`modified` times
 | Fixture | Tests | Expected construction |
 |---|---|---|
 | `toc-basic.docx` | A table of contents with hyperlinks and page numbers | TOC field (`TOC \o "1-3" \h \u`) after a `Title`, then `Heading1`/`Heading2` content; `refresh` run |
+| `toc-no-page-numbers.docx` | A table of contents whose **cached** result lists the heading entries with **no page numbers**, while remaining a real, updatable field (issue #11, spec D9) | `TOC1`–`TOC3` defined up front; TOC field `pageNumbers=false` (`TOC \o "1-3" \h \z \u`) after a `Title`; three headings forced onto pages 1/2/3 with explicit `pagebreak`s; `refresh` caches one `TOC1`/`TOC2` hyperlink paragraph per heading, **no** tab/PAGEREF. Word/WPS/LibreOffice display the entries with no page numbers on open (repair-free); a manual F9 rebuilds the field and adds the correct numbers `1,2,3`. See `references/fields/toc-without-page-numbers.md`. |
 
 ### notes/
 
