@@ -171,6 +171,23 @@ else
   report_skip "word/wps over COM" "Windows interop not reachable ($PS_BIN)"
 fi
 
+# ---------------------------------------------------------------------------
+# 6. A relative --out must be absolutised, not fed to LibreOffice as file:// (#38)
+# ---------------------------------------------------------------------------
+relroot="tests/.out/compat-rel"
+rm -rf "${ROOT:?}/$relroot"
+( cd "$ROOT" && timeout 120 "$TOOL" "$LO_FIX" --out "$relroot" --apps libreoffice --timeout 90 --json > "$OUTROOT/rel.json" 2>/dev/null )
+rc=$?
+assert_eq "relative --out: harness exits (no hang)" "$rc" "0"
+assert_true "relative --out: LibreOffice record repair-free" \
+  '.records[]|select(.app=="libreoffice")|.opens_without_repair==true' \
+  "$(cat "$OUTROOT/rel.json" 2>/dev/null || echo '{}')"
+if [[ -s "$ROOT/$relroot/result.json" ]]; then
+  report_ok "relative --out: artifacts written under the resolved directory"
+else
+  report_fail "relative --out: artifacts written under the resolved directory" "no result.json at $relroot"
+fi
+
 echo
 echo "Compatibility harness: $((pass + fail)) checks run | $pass passed | $fail failed | $skip skipped"
 echo "Artifacts: $OUTROOT"
