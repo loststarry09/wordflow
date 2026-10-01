@@ -4,9 +4,11 @@
 decided, what is verified, where the work stands, and what is next. It summarises and
 links; the ADRs hold the full arguments and `references/research/` holds the evidence.
 
-- **Last updated:** 2026-09-28
+- **Last updated:** 2026-10-01
 - **Verified tooling:** OfficeCLI `1.0.152`; Word `16.0`; WPS Writer `12.0`; LibreOffice `24.2.7.2`
-- **Phase:** requirements frozen, compatibility research done, **no layout rules or implementation written yet**
+- **Phase:** foundation, the single-document **walking skeleton**, and the first cross-application
+  compatibility research wave are **implemented and merged**; the document **features (#19–#27) are
+  not built yet**. See **Implementation status** and §6.
 
 ## Reading order
 
@@ -45,6 +47,29 @@ only to trace how a decision or fact was reached.
 - [`docs/adr/0002-layout-only-never-edit-content.md`](./docs/adr/0002-layout-only-never-edit-content.md)
 - [`docs/adr/0003-output-is-a-new-file.md`](./docs/adr/0003-output-is-a-new-file.md)
 - [`docs/adr/0004-compatibility-means-opens-without-repair.md`](./docs/adr/0004-compatibility-means-opens-without-repair.md)
+
+## Implementation status
+
+Everything below is merged to `main`, covered by acceptance tests, and reproducible. WordFlow owns the
+judgement; every DOCX read/write still goes through OfficeCLI (ADR-0001).
+
+| Capability | Issue | Deliverable | Test command |
+|---|---|---|---|
+| Style inspection + ownership decision | #16 | `scripts/wf-style-ownership.sh`, `references/core/style-ownership.md` | `tests/style-ownership.sh` |
+| Output filename rule + primitive | #13 | `scripts/wf-output-name.sh`, `references/core/output-naming.md` | `tests/output-naming.sh` |
+| Page setup + section model | #18 | `scripts/wf-page-setup.sh`, `references/core/sections.md` | `tests/page-setup.sh` |
+| Standard style set + zh-CN typography | #17 | `scripts/wf-standard-styles.sh`, `references/core/styles.md` | `tests/standard-styles.sh` |
+| Intake, precedence, source protection | #15 | `scripts/wf-intake.sh`, `references/core/intake.md` | `tests/intake.sh` |
+| Change-report contract | #28 | `scripts/wf-change-report.sh`, `references/workflow/change-report.md` | `tests/change-report.sh` |
+| Render preview | #29 | `scripts/wf-render-preview.sh`, `references/workflow/render-preview.md` | `tests/render-preview.sh` |
+| Warn / downgrade / stop policy | #30 | `scripts/wf-risk-policy.sh`, `references/workflow/risk-policy.md` | `tests/risk-policy.sh` |
+| Cross-application compatibility harness | #2 | `scripts/wf-compat-harness.sh`, `references/compatibility/harness.md` | `tests/compat-harness.sh` |
+| **Walking skeleton (end-to-end)** | #35 | `scripts/wf-pipeline.sh`, `references/workflow/pipeline.md` | `tests/pipeline.sh` |
+
+The walking skeleton (#35) runs one document through **inspect → layout decision → apply → new output
+→ validate → preview → change report → risk hooks → deliver**, verifies the source is unchanged, and
+produces a real DOCX + preview + change report under `tests/.out/walking-skeleton/`. Features #19–#27
+and the full workflows #32/#33 build on these primitives.
 
 ## 3. v0.1 confirmed requirements
 
@@ -112,6 +137,26 @@ Observed on OfficeCLI 1.0.152; detail in
   not only schema).
 - Output is **Transitional** OOXML, `compatibilityMode=15`.
 
+**New verified facts (2026-10-01 batch)** — detail in the linked research/references:
+
+- **`view stats` labels the default referenced style by its `styleId`** (`Normal`) while a style can be
+  *defined* with a different display name; match referenced→defined by `styleId` **or** name (this
+  mismatch caused a false-dangling bug, #36).
+- **LibreOffice ignores `w:firstLineChars`** unless the absolute `w:firstLine` twin is also written;
+  write both for a character-unit first-line indent (#17).
+- **`add /styles` with an existing `styleId` replaces the whole style and drops `w:default`** (sends
+  unstyled paragraphs to `docDefaults`/`等线`); use `set /styles/Normal` or `add --prop default=true`.
+- **Length parser** accepts `cm`, `in`, `pt` and a bare number; **rejects `mm` and `twip`** (#18).
+- **Page-dependent fields are computed by the reader's layout engine, not the cache**: footer
+  `PAGE`/`NUMPAGES` (and an unlocked `PAGEREF`) show the correct value per page in Word/WPS/LibreOffice
+  with no F9, even when the cache is stale (#3).
+- **`add / --type header|footer --prop type=first|default|even`** auto-writes `w:titlePg` /
+  `<w:evenAndOddHeaders/>`; the `default` part is the **odd**-page part when even/odd is on (#5).
+- **The equation FormulaParser is LaTeX-ish and never emits `m:eqArr`** (`\begin{aligned}` becomes
+  `m:m`); a true equation array needs `raw-set` (#6).
+- **Harness caveat:** `wf-compat-harness.sh` hangs LibreOffice when `--out` is a **relative** path
+  (relative `file://` profile URI); pass an absolute `--out` (the default is absolute) (#37).
+
 ## 5. Compatibility conclusions
 
 Empirically measured — full method and evidence in
@@ -134,57 +179,92 @@ documentary per-feature notes in
 > the reader sees, so a pre-computed cache is mandatory — and it must be *correct*. A wrong
 > page number (from a non-Word pagination model) is worse than none, because it looks
 > finished and is silently wrong. Placeholders must never ship silently.
+>
+> **Carve-out (#3):** *page-dependent* fields (`PAGE`, `NUMPAGES`, and an unlocked `PAGEREF`) are
+> recomputed by the reader's layout engine per page, so a stale cache does not affect what is shown.
+> Content caches (`REF`/`SEQ`) and the TOC still need a correct, non-placeholder cache.
 
 **Render fidelity (LibreOffice measured, via PDF render)**
 
 - Faithful: simple OMML equations; **merged-cell tables**; page-number restart +
   `lowerRoman`; centred `PAGE` footer.
   (Merged-cell tables are still scoped as "supported with warning" in §3; the spec may
-  promote them now that they measure faithful — nested tables remain untested.)
+  promote them now that they measure faithful.)
 - **Not faithful: floating (anchored) images** — rendered left-aligned and in flow, not
   centred/floating. Keep floating images in "supported with warning".
 - CJK fonts substitute silently: real `SimSun` embedded, `Microsoft YaHei` → `WenQuanYi
   Zen Hei`, `等线` → `DejaVu Sans` (no CJK glyphs).
-- **Untested:** nested tables, different-first-page and odd/even headers, complex
-  equations, Chinese punctuation/kinsoku compression.
+
+**First compatibility research wave (#3–#7)** — each with a committed fixture and a tagged research
+note under `references/research/`:
+
+- **Nested tables → promote to fully supported (#4).** All three open repair-free and render
+  faithfully (fixed layout, explicit `colWidths`, direct borders; `tblW` must equal Σ`colWidths`).
+- **Different first-page + odd/even headers/footers → portable (#5).** FIRST/EVEN/ODD/EVEN rendered
+  identically in Word 16 / WPS 12 / LO 24.2; recommend promotion (LO 7.6 and multi-section
+  link-to-previous remain untested).
+- **Complex equations → keep OMML, warn (#6).** Matrices and `m:eqArr` are faithful in all three;
+  failures are LibreOffice-only and narrow (parser `\begin{aligned}`, the `|` character). Image/
+  plain-text fallbacks are excluded by ADR-0001/0002.
+- **CJK punctuation / kinsoku → application-controlled; no setting required (#7).** 0 forbidden-boundary
+  lines in all three; optional low-risk `charSpacingControl=compressPunctuation` default for #17.
+- **Multi-page page numbers → footer `PAGE`/`NUMPAGES` safe to ship (#3).** PAGEREF/TOC page numbers
+  stay limited/omitted.
+
+These findings **challenge** the earlier "untested" list and the blanket "the cached result is what the
+reader sees" claim; the spec/status changes are **not applied silently** — tracked in **#37**.
 
 **Testability:** all three applications are inspectable from this WSL environment — Word
 and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 
 ## 6. Tests & fixtures
 
-- `tests/fixtures/` — **17 DOCX fixtures**, one feature each; see
+- `tests/fixtures/` — **29 DOCX fixtures**, one feature each; see
   [`tests/fixtures/MANIFEST.md`](./tests/fixtures/MANIFEST.md).
 - `tests/generate-fixtures.sh` — deterministic rebuild (explicit `--locale`, closes each
   file); `tests/validate-fixtures.sh` — `validate` + `view issues` + screenshot render per
   fixture into git-ignored `tests/.out/`.
-- Last run: **`35 checks run | 35 passed | 0 failed`**.
+- **Acceptance suites** (one per capability, all green): `tests/style-ownership.sh`,
+  `output-naming.sh`, `page-setup.sh`, `standard-styles.sh`, `intake.sh`, `change-report.sh`,
+  `render-preview.sh`, `risk-policy.sh`, `compat-harness.sh`, `pipeline.sh`.
+- **Last full run (2026-10-01):** `validate-fixtures` **59 checks | 59 passed**;
+  `compat-harness` (real Word/WPS/LibreOffice) **39 | 39**; `pipeline` (real end-to-end)
+  **63 | 63**; all unit suites and `shellcheck -S warning` clean.
 - Fixtures are committed snapshots; regenerated files are not byte-identical (timestamps).
 - See [`tests/README.md`](./tests/README.md).
 
 ## 7. Open questions
 
-Carried from [`report/2026-09-28-requirements-grilling.md`](./report/2026-09-28-requirements-grilling.md) §4–5.
+**Resolved this batch:**
 
-- **TOC page-number strategy** (must be decided in spec): omit page numbers / best-effort
-  plus an "update fields (F9)" warning / require an application finalisation pass.
-- **Template adoption boundary**: what a template contributes (theme fonts, style
-  definitions, page setup) vs what it must not (its content, arguably header/footer text).
-- **Exact version matrix**: which Word releases (2016/2019/365), which WPS version,
-  LibreOffice 7.6 vs 24.8+.
-- **Default layout values** and the concrete **standard style set**.
-- **Output filename safety** (is `-排版` safe everywhere; should it localise) and
-  **distribution** (install location, discovery per agent).
-- **Large-document limits**, and behaviour offline or with missing fonts.
-- The untested render items in §5.
+- ~~TOC page-number strategy~~ — frozen: page numbers omitted in v0.1 (spec §D9); footer
+  `PAGE`/`NUMPAGES` confirmed safe per page (#3).
+- ~~Default layout values / standard style set~~ — frozen in spec §D6/§D7 and implemented (#17).
+- ~~Output filename safety~~ — frozen: `-排版`, ASCII numbering, not localised (#13).
+- ~~CJK font strategy~~ — SimSun body / SimHei headings + explicit Latin faces confirmed (#8).
+- ~~Untested render items in §5~~ — nested tables (#4), first-page/odd-even headers (#5), complex
+  equations (#6), CJK punctuation/kinsoku (#7) are now measured; see §5. Spec updates: #37.
+
+**Still open:**
+
+- **Template adoption boundary** (what a template contributes vs must not) — implementation ticket #27.
+- **Exact version matrix**: which Word releases, which WPS version, LO 7.6 vs 24.8+ — #10.
+- **Distribution** (install location, discovery per agent) — #14.
+- **Large-document limits**, offline / missing-font behaviour — #9.
+- **TOC cache without page numbers** (#11) and **correct cached cross-reference text** (#12) —
+  mechanics not yet built.
+- **Tidy capability**: dangling-style repair and template/requirement application are recorded as
+  unverified by the walking skeleton; built out in #27/#33.
 
 ## 8. Next steps
 
-1. **`/to-spec`** — turn the frozen requirements into the v0.1 spec, resolving the open
-   questions above (start with the TOC page-number strategy).
-2. Write the first real layout reference (suggest `references/core/styles.md`) and grow
-   `SKILL.md` from skeleton to content.
-3. Fill the untested compatibility items in §5 as needed.
+1. **`#37`** — spec/status refresh from the research findings (do not edit the frozen spec silently).
+2. Implement the document **features**: `#19` headers/footers + page numbers, `#20` images,
+   `#21` tables, `#22` captions, `#23` cross-references, `#24` TOC, `#25` footnotes, `#26`
+   equations, `#27` template adoption. `#36` fixes the #16 style-matcher bug.
+3. **`#31`** QA Definition-of-Done suite, then the full workflows **`#32`/`#33`**, and **`#34`**
+   v0.1 acceptance.
+4. Grow `SKILL.md` from skeleton to content as the feature set lands.
 
 > Do **not** start the spec or implement features from this file alone; it is a status
 > entry point, not the spec.
@@ -199,6 +279,7 @@ Carried from [`report/2026-09-28-requirements-grilling.md`](./report/2026-09-28-
 - [`report/2026-09-28-requirements-grilling.md`](./report/2026-09-28-requirements-grilling.md) — the full requirements clarification (canonical source for §3).
 - [`report/2026-09-28-status.md`](./report/2026-09-28-status.md) — a point-in-time status snapshot; **superseded by this file**.
 
-`references/` (on-demand): `core/`, `fields/`, `objects/`, `compatibility/` are for future
-layout guidance; `research/` holds the tagged evidence and is loaded only when a task
-touches it.
+`references/` (on-demand): `core/` (styles, sections, naming, intake), `workflow/` (change report,
+render preview, risk policy, pipeline), `compatibility/` (the cross-app harness) hold the implemented
+guidance; `fields/` and `objects/` are for future feature work; `research/` holds the tagged evidence
+and is loaded only when a task touches it.

@@ -62,18 +62,20 @@ wordflow/
 ├── CONTEXT.md           # ubiquitous language / glossary
 ├── SKILL.md             # agent-facing entry point (minimal; grows over time)
 ├── .gitignore
-├── scripts/             # reproducible operations that drive OfficeCLI (e.g. style ownership)
+├── scripts/             # reproducible operations that drive OfficeCLI (wf-*.sh)
 ├── references/          # layout knowledge, disclosed on demand (see references/README.md)
 │   ├── README.md
-│   ├── core/            # styles, headings, sections, margins, headers/footers
+│   ├── core/            # styles, sections, page setup, naming, intake, style ownership
+│   ├── workflow/        # change report, render preview, risk policy, end-to-end pipeline
 │   ├── fields/          # fields, TOC, captions, cross-references, footnotes/endnotes
 │   ├── objects/         # images, tables, equations, charts
-│   ├── compatibility/   # Word / WPS / LibreOffice portability rules
+│   ├── compatibility/   # cross-application harness; Word / WPS / LibreOffice rules
 │   └── research/        # researched facts, tagged verified / standard / uncertain
 ├── tests/
 │   ├── README.md
 │   ├── generate-fixtures.sh   # deterministically rebuild fixtures/ with OfficeCLI
 │   ├── validate-fixtures.sh   # validate + issue-check + render every fixture
+│   ├── wf-*.sh                # per-capability acceptance suites
 │   └── fixtures/        # real DOCX inputs/outputs for round-trip testing
 ├── docs/
 │   ├── README.md
@@ -90,8 +92,10 @@ wordflow/
 
 ## Status
 
-**Foundation.** The skill skeleton, references layout, and a verified DOCX fixture suite
-exist; requirements are clarified and the compatibility research is done. No WordFlow
-product guidance or layout rules have been written yet.
+**Walking skeleton.** The foundation capabilities (style ownership, page/section setup, the
+standard style set + Simplified-Chinese typography, intake/precedence/source protection, the
+change-report contract, render preview, the warn/downgrade/stop policy, and a cross-application
+compatibility harness) are implemented and tested, and a single-document **end-to-end pipeline**
+runs. The document features (#19–#27) and the full workflows (#32/#33) are not built yet.
 
 **Current status lives in [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).**

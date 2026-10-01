@@ -8,7 +8,8 @@ For the distilled current conclusions, read [`../PROJECT_STATUS.md`](../PROJECT_
 
 | Directory | Concern | Example topics |
 |-----------|---------|----------------|
-| `core/` | Document skeleton and typography | paragraph/character styles, heading hierarchy, sections, page size, margins, headers/footers, page numbering |
+| `core/` | Document skeleton and typography | paragraph/character styles, heading hierarchy, sections, page size, margins, headers/footers, page numbering, output naming, intake/precedence |
+| `workflow/` | Job-level behaviour | change report, render preview, warn/downgrade/stop policy, the end-to-end pipeline |
 | `fields/` | Generated and linked content | fields, TOC, captions (SEQ), cross-references (REF/PAGEREF), bookmarks, footnotes/endnotes |
 | `objects/` | Embedded and structured content | images, tables, equations, charts |
 | `compatibility/` | Portability across applications | Word / WPS Writer / LibreOffice Writer differences and the portable choice |

@@ -11,8 +11,13 @@ Tests exercise WordFlow's guidance against **real DOCX files** produced and insp
   - See `fixtures/MANIFEST.md` for what every fixture tests.
 - `generate-fixtures.sh` — deterministically rebuild `fixtures/` with OfficeCLI (explicit locales; no host-locale dependence).
 - `validate-fixtures.sh` — run `validate`, `view issues`, and a `screenshot` render over every fixture; writes renders to `.out/` (git-ignored).
-- `style-ownership.sh` — acceptance checks for the style inspection / ownership decision (`scripts/wf-style-ownership.sh`).
-- `.out/` — generated renders. Not committed.
+- Per-capability acceptance suites (each drives its `scripts/wf-*.sh`):
+  - `style-ownership.sh` (#16), `output-naming.sh` (#13), `page-setup.sh` (#18),
+    `standard-styles.sh` (#17), `intake.sh` (#15);
+  - `change-report.sh` (#28), `render-preview.sh` (#29), `risk-policy.sh` (#30);
+  - `compat-harness.sh` (#2) — drives real Word/WPS/LibreOffice;
+  - `pipeline.sh` (#35) — the real single-document end-to-end run.
+- `.out/` — generated renders and pipeline artifacts. Not committed.
 
 ## What to verify
 
