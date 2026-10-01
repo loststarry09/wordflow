@@ -16,6 +16,8 @@ Tests exercise WordFlow's guidance against **real DOCX files** produced and insp
     `standard-styles.sh` (#17), `intake.sh` (#15);
   - `change-report.sh` (#28), `render-preview.sh` (#29), `risk-policy.sh` (#30);
   - `toc-cache.sh` (#11), `crossref-cache.sh` (#12) — the cache mechanisms;
+  - the feature suites (#19–#27): `headers.sh`, `image.sh`, `table.sh`, `caption.sh`,
+    `crossref.sh`, `toc.sh`, `footnote.sh`, `equation.sh`, `template.sh`;
   - `qa.sh` (#31) — the Definition-of-Done gate;
   - `skill-discovery.sh` (#14) — per-agent skill discovery;
   - `compat-harness.sh` (#2) — drives real Word/WPS/LibreOffice;

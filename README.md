@@ -67,8 +67,8 @@ wordflow/
 │   ├── README.md
 │   ├── core/            # styles, sections, page setup, naming, intake, style ownership
 │   ├── workflow/        # change report, render preview, risk policy, pipeline, QA gate
-│   ├── fields/          # fields, TOC, captions, cross-references, footnotes/endnotes
-│   ├── objects/         # images, tables, equations, charts
+│   ├── fields/          # fields, TOC, captions, cross-references, footnotes
+│   ├── objects/         # images, tables, equations, headers/footers
 │   ├── compatibility/   # cross-application harness; Word / WPS / LibreOffice rules
 │   └── research/        # researched facts, tagged verified / standard / uncertain
 ├── tests/
@@ -95,12 +95,15 @@ wordflow/
 
 ## Status
 
-**Foundation hardened.** The foundation capabilities (style ownership, page/section setup, the
+**Features implemented.** The foundation capabilities (style ownership, page/section setup, the
 standard style set + Simplified-Chinese typography, intake/precedence/source protection, the
 change-report contract, render preview, the warn/downgrade/stop policy, the TOC and cross-reference
 cache mechanisms, a cross-application compatibility harness, and skill discovery per agent) are
-implemented and tested; a single-document **end-to-end pipeline** runs; and an **executable QA /
-Definition-of-Done gate** (`scripts/wf-qa.sh`) checks a delivered document. The document features
-(#19–#27) and the full workflows (#32/#33) are not built yet.
+implemented and tested; the document **features #19–#27** (headers/footers + page numbers, images,
+tables, captions, cross-references, TOC, footnotes, equations, template adoption) are implemented as
+self-contained capability scripts, each with a fixture-driven acceptance suite; a single-document
+**end-to-end pipeline** runs; and an **executable QA / Definition-of-Done gate** (`scripts/wf-qa.sh`)
+checks a delivered document. The full **workflows (#32/#33)** and **v0.1 acceptance (#34)** are not
+built yet.
 
 **Current status lives in [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).**

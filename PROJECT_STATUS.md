@@ -6,10 +6,12 @@ links; the ADRs hold the full arguments and `references/research/` holds the evi
 
 - **Last updated:** 2026-10-01
 - **Verified tooling:** OfficeCLI `1.0.153` (baseline `1.0.152`; the drift is noted in the #9/#11 references); Word `16.0`; WPS Writer `12.0`; LibreOffice `24.2.7.2`
-- **Phase:** foundation complete and hardened — the single-document **walking skeleton**, the first compatibility
-  research wave, the TOC and cross-reference cache mechanisms, distribution, and an **executable QA gate (#31)**
-  are implemented and merged; the document **features (#19–#27) are not built yet**. See **Implementation
-  status** and §6.
+- **Phase:** foundation complete and hardened, and the document **features #19–#27 are implemented and
+  merged** as self-contained capabilities (each with a fixture-driven acceptance suite) — the single-document
+  **walking skeleton**, the compatibility research wave, the TOC/cross-reference mechanisms, distribution, the
+  **executable QA gate (#31)**, and the features (headers/footers + page numbers, images, tables, captions,
+  cross-references, TOC, footnotes, equations, template adoption) are all in. The full **workflows #32/#33**
+  and **v0.1 acceptance #34** remain. See **Implementation status** and §6.
 
 ## Reading order
 
@@ -72,11 +74,26 @@ judgement; every DOCX read/write still goes through OfficeCLI (ADR-0001).
 | Skill distribution & discovery | #14 | `docs/distribution.md`, `.agents/skills/wordflow/`, `.claude/skills/wordflow/` | `tests/skill-discovery.sh` |
 | Large-document & missing-font research | #9 | `references/research/large-documents-and-fonts.md` | `tests/probes/large-document.sh` |
 | Version matrix | #10 | `references/research/version-matrix.md` | `tests/probes/detect-versions.sh` |
+| Headers / footers + page numbers | #19 | `scripts/wf-headers.sh`, `references/objects/headers-footers.md` | `tests/headers.sh` |
+| Inline images + floating-image downgrade | #20 | `scripts/wf-image.sh`, `references/objects/images.md` | `tests/image.sh` |
+| Regular / merged-cell / nested tables | #21 | `scripts/wf-table.sh`, `references/objects/tables.md`, fixture `tables/merged-table.docx` | `tests/table.sh` |
+| Captions | #22 | `scripts/wf-caption.sh`, `references/fields/captions.md` | `tests/caption.sh` |
+| Cross-references | #23 | `scripts/wf-crossref.sh`, `references/fields/cross-references.md` | `tests/crossref.sh` |
+| Table of contents | #24 | `scripts/wf-toc.sh`, `references/fields/table-of-contents.md` | `tests/toc.sh` |
+| Footnotes | #25 | `scripts/wf-footnote.sh`, `references/fields/footnotes.md` | `tests/footnote.sh` |
+| Equations | #26 | `scripts/wf-equation.sh`, `references/objects/equations.md` | `tests/equation.sh` |
+| Template adoption (look only) | #27 | `scripts/wf-template.sh`, `references/core/template-adoption.md` | `tests/template.sh` |
 
 The walking skeleton (#35) runs one document through **inspect → layout decision → apply → new output
 → validate → preview → change report → risk hooks → deliver**, verifies the source is unchanged, and
-produces a real DOCX + preview + change report under `tests/.out/walking-skeleton/`. Features #19–#27
-and the full workflows #32/#33 build on these primitives.
+produces a real DOCX + preview + change report under `tests/.out/walking-skeleton/`.
+
+The features #19–#27 are implemented as **self-contained capability scripts** (`wf-headers.sh`,
+`wf-image.sh`, `wf-table.sh`, `wf-caption.sh`, `wf-crossref.sh`, `wf-toc.sh`, `wf-footnote.sh`,
+`wf-equation.sh`, `wf-template.sh`), each covered by its own fixture-driven acceptance suite and routing
+warnings/downgrades through the shared risk policy. They are **not yet wired into the single-document
+pipeline**; assembling them into the two full workflows (#32 generate-from-content, #33 tidy-existing) is
+the next phase.
 
 ## 3. v0.1 confirmed requirements
 
@@ -231,7 +248,7 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 
 ## 6. Tests & fixtures
 
-- `tests/fixtures/` — **31 DOCX fixtures**, one feature each; see
+- `tests/fixtures/` — **32 DOCX fixtures**, one feature each; see
   [`tests/fixtures/MANIFEST.md`](./tests/fixtures/MANIFEST.md).
 - `tests/generate-fixtures.sh` — deterministic rebuild (explicit `--locale`, closes each
   file); `tests/validate-fixtures.sh` — `validate` + `view issues` + screenshot render per
@@ -239,13 +256,15 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 - **Acceptance suites** (one per capability, all green): `tests/style-ownership.sh`,
   `output-naming.sh`, `page-setup.sh`, `standard-styles.sh`, `intake.sh`, `change-report.sh`,
   `render-preview.sh`, `risk-policy.sh`, `toc-cache.sh`, `crossref-cache.sh`, `qa.sh`,
-  `skill-discovery.sh`, `compat-harness.sh`, `pipeline.sh`; research probes under `tests/probes/`.
+  `skill-discovery.sh`, `headers.sh`, `image.sh`, `table.sh`, `caption.sh`, `crossref.sh`,
+  `toc.sh`, `footnote.sh`, `equation.sh`, `template.sh`, `compat-harness.sh`, `pipeline.sh`;
+  research probes under `tests/probes/`.
 - **QA gate:** `scripts/wf-qa.sh` is the executable Definition of Done (spec §D14) — see
   [`references/workflow/qa-gate.md`](./references/workflow/qa-gate.md).
-- **Last full run (2026-10-01):** `validate-fixtures` **63 checks | 63 passed** (31 fixtures);
-  `qa` **33 | 33**; `compat-harness` (real Word/WPS/LibreOffice) **42 | 42**; `pipeline` (real
-  end-to-end) **63 | 63**; `toc-cache` **40 | 40**; `crossref-cache` **39 | 39**; all other unit
-  suites and `shellcheck -S warning` clean.
+- **Last full run (2026-10-01, features batch):** `validate-fixtures` **65 checks | 65 passed** (32
+  fixtures); `compat-harness` (real Word/WPS/LibreOffice) **42 | 42**; `pipeline` **63 | 63**; every
+  feature suite green (`headers` 52, `image` 50, `table` 49, `caption` 60, `crossref` 45, `toc` 75,
+  `footnote` 54, `equation` 49, `template` 56); all other unit suites and `shellcheck -S warning` clean.
 - Fixtures are committed snapshots; regenerated files are not byte-identical (timestamps).
 - See [`tests/README.md`](./tests/README.md).
 
@@ -265,22 +284,27 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
   behaviour (#9)~~, ~~TOC cache without page numbers (#11)~~, ~~cached cross-reference text (#12)~~ — all
   delivered; see the **Implementation status** table and the linked references. #36/#38/#39 (foundation bug and
   tool/fixture defects) are fixed.
+- ~~Template adoption boundary~~ and ~~feature mechanics #19–#27~~ — implemented as capability scripts with
+  fixture-driven suites; the boundary (look only, never content; requirement outranks) is enforced by
+  `wf-template.sh` and documented in `references/core/template-adoption.md`.
 
 **Still open:**
 
-- **Template adoption boundary** (what a template contributes vs must not) — implementation ticket #27.
-- **Tidy capability**: dangling-style repair and template/formatting-requirement application are recorded as
-  unverified by the walking skeleton; built out in #27/#33.
-- **Feature mechanics** for #19–#27 (headers/footers + page numbers, images, tables, captions,
-  cross-references, TOC, footnotes, equations) — the next build phase.
+- **Workflow assembly:** the capabilities are not yet wired into the single-document pipeline; the generate
+  (#32) and tidy (#33) workflows must call them with the right precedence and produce one change report.
+- **Tidy capability:** dangling-style repair and formatting-requirement application remain recorded as
+  unverified by the walking skeleton; built out in #33.
+- **v0.1 acceptance:** an end-to-end acceptance run across the promised capabilities (#34).
 
 ## 8. Next steps
 
-1. Implement the document **features**: `#19` headers/footers + page numbers, `#20` images,
-   `#21` tables, `#22` captions, `#23` cross-references, `#24` TOC, `#25` footnotes, `#26`
-   equations, `#27` template adoption. Each must pass the executable DoD gate (`scripts/wf-qa.sh`, #31).
-2. Then the full workflows **`#32`/`#33`** and **`#34`** v0.1 acceptance.
-3. Grow `SKILL.md` from skeleton to content as the feature set lands.
+1. Assemble the implemented capabilities into the two full workflows: **`#32` generate-from-content** and
+   **`#33` tidy-existing-DOCX**. Wire `wf-headers.sh`, `wf-image.sh`, `wf-table.sh`, `wf-caption.sh`,
+   `wf-crossref.sh`, `wf-toc.sh`, `wf-footnote.sh`, `wf-equation.sh`, and `wf-template.sh` into
+   `scripts/wf-pipeline.sh` with the D2 precedence and a single change report; replace the pipeline's stale
+   "template adoption is #27 / not implemented" note with a real `wf-template.sh` call.
+2. Run **`#34`** v0.1 acceptance across the promised capabilities, gated by `scripts/wf-qa.sh`.
+3. Grow `SKILL.md` from skeleton to content as the workflows land.
 4. Keep the reference index and this file current; record each ticket in `report/` as an audit trail.
 
 > Do **not** start the spec or implement features from this file alone; it is a status
@@ -296,7 +320,7 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 - [`report/2026-09-28-requirements-grilling.md`](./report/2026-09-28-requirements-grilling.md) — the full requirements clarification (canonical source for §3).
 - [`report/2026-09-28-status.md`](./report/2026-09-28-status.md) — a point-in-time status snapshot; **superseded by this file**.
 
-`references/` (on-demand): `core/` (styles, sections, naming, intake), `workflow/` (change report,
-render preview, risk policy, pipeline, QA gate), `compatibility/` (the cross-app harness), and `fields/`
-(the TOC and cross-reference cache mechanisms) hold the implemented guidance; `objects/` is future feature
-work (per-feature evidence lives under `research/`).
+`references/` (on-demand): `core/` (styles, sections, naming, intake, template adoption), `workflow/`
+(change report, render preview, risk policy, pipeline, QA gate), `compatibility/` (the cross-app harness),
+`fields/` (captions, cross-references, TOC, footnotes, and the cache mechanisms) and `objects/` (images,
+tables, equations, headers/footers) hold the implemented guidance (per-feature evidence lives under `research/`).
