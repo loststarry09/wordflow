@@ -81,6 +81,9 @@ The entry `SKILL.md` is a **regular file** because the loaders differ:
 
 The duplication is contained: `tests/skill-discovery.sh` asserts every entry
 copy is byte-identical to the root `SKILL.md`, so the copies cannot drift.
+opencode loads both `.agents/skills/` and `.claude/skills/` and deduplicates the
+same-named skill, reporting whichever entry it scans first; it does not error,
+and discovery holds either way `[V]`.
 
 ## Installing outside this repo
 
@@ -130,8 +133,10 @@ offered.
 
 ## Evidence log (2026-10-01)
 
-- `[V]` `opencode debug skill` in the repo lists
-  `"name": "wordflow"` at `<repo>/.agents/skills/wordflow/SKILL.md`.
+- `[V]` `opencode debug skill` in the repo lists `"name": "wordflow"`, located
+  at either committed entry (`.agents/skills/wordflow/SKILL.md` or
+  `.claude/skills/wordflow/SKILL.md`); opencode dedupes the same-named copies
+  and reports whichever it scans first.
 - `[V]` `codex debug prompt-input` in the repo lists
   `wordflow: … (file: r7/wordflow/SKILL.md)` with skill root
   `r7 = <repo>/.agents/skills`.

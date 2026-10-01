@@ -133,9 +133,12 @@ trap 'rm -rf "$tmpdir"' EXIT
 
 if oc="$(find_opencode)"; then
   if ( cd "$ROOT" && timeout 120 "$oc" debug skill ) >"$tmpdir/opencode.out" 2>/dev/null; then
+    # opencode loads .agents/skills and .claude/skills and dedupes the
+    # same-named skill, so it may report either entry; either proves discovery.
     if grep -q "\"name\": \"$SKILL\"" "$tmpdir/opencode.out" \
-       && grep -q "\.agents/skills/$SKILL/SKILL.md" "$tmpdir/opencode.out"; then
-      report_ok "opencode discovers '$SKILL' (.agents/skills)"
+       && { grep -qF "$ROOT/.agents/skills/$SKILL/SKILL.md" "$tmpdir/opencode.out" \
+            || grep -qF "$ROOT/.claude/skills/$SKILL/SKILL.md" "$tmpdir/opencode.out"; }; then
+      report_ok "opencode discovers '$SKILL' (project skills dir)"
     else
       report_fail "opencode discovers '$SKILL'" "skill absent from 'opencode debug skill'"
     fi
