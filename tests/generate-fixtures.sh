@@ -331,8 +331,10 @@ cjkpara() { # cjkpara <text>  — body metrics (SimSun 12 pt), 30 full-width cha
     --prop size=12 --prop rightIndent=1112 --prop firstLineIndent=0
 }
 cjkpara "${F30}，逗号不应出现在行首；这是收尾标点的行首禁则测试，继续补充文字使段落更长。${F10}。"
+# shellcheck disable=SC1111  # intentional Chinese quotation marks in fixture text
 cjkpara "${F29}“开引号不应出现在行尾；这是起首标点的行尾禁则测试，继续补充文字使段落更长。${F10}”结束。"
 cjkpara "${F30}（左括号位于行首应被压缩；右括号位于行尾应被拉到下一行。继续补充文字。${F8}）。"
+# shellcheck disable=SC1111  # intentional Chinese quotation marks in fixture text
 cjkpara "标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。标点压缩：他说：“你好。”然后……（其实）——【重点】？！《书名》。"
 cjkpara "中西文混排 中文abc中文123中文DEF中文 空格与拉丁字母混排 internationalization 混排结束。"
 cjkpara "这个很长的英文单词不应该被随意断开：supercalifragilisticexpialidocious 结束。"
