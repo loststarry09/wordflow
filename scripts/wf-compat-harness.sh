@@ -213,6 +213,10 @@ fi
 # --- output + staging ------------------------------------------------------
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 OUT="${OUT:-$ROOT/tests/.out/compat/$RUN_ID}"
+mkdir -p "$OUT"
+# Absolutise: LibreOffice's -env:UserInstallation needs a valid file:// URI, and a
+# relative path would parse as a URI host and hang the conversion.
+OUT="$(cd "$OUT" && pwd)"
 mkdir -p "$OUT/work"
 
 STAGE_WSL=""
