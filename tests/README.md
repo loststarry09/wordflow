@@ -15,9 +15,14 @@ Tests exercise WordFlow's guidance against **real DOCX files** produced and insp
   - `style-ownership.sh` (#16), `output-naming.sh` (#13), `page-setup.sh` (#18),
     `standard-styles.sh` (#17), `intake.sh` (#15);
   - `change-report.sh` (#28), `render-preview.sh` (#29), `risk-policy.sh` (#30);
+  - `toc-cache.sh` (#11), `crossref-cache.sh` (#12) — the cache mechanisms;
+  - `qa.sh` (#31) — the Definition-of-Done gate;
+  - `skill-discovery.sh` (#14) — per-agent skill discovery;
   - `compat-harness.sh` (#2) — drives real Word/WPS/LibreOffice;
   - `pipeline.sh` (#35) — the real single-document end-to-end run.
-- `.out/` — generated renders and pipeline artifacts. Not committed.
+- `probes/` — research probes (not pass/fail gates): `large-document.sh` (#9),
+  `detect-versions.sh` (#10).
+- `.out/` — generated renders, pipeline and probe artifacts. Not committed.
 
 ## What to verify
 

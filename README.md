@@ -66,7 +66,7 @@ wordflow/
 ├── references/          # layout knowledge, disclosed on demand (see references/README.md)
 │   ├── README.md
 │   ├── core/            # styles, sections, page setup, naming, intake, style ownership
-│   ├── workflow/        # change report, render preview, risk policy, end-to-end pipeline
+│   ├── workflow/        # change report, render preview, risk policy, pipeline, QA gate
 │   ├── fields/          # fields, TOC, captions, cross-references, footnotes/endnotes
 │   ├── objects/         # images, tables, equations, charts
 │   ├── compatibility/   # cross-application harness; Word / WPS / LibreOffice rules
@@ -75,13 +75,16 @@ wordflow/
 │   ├── README.md
 │   ├── generate-fixtures.sh   # deterministically rebuild fixtures/ with OfficeCLI
 │   ├── validate-fixtures.sh   # validate + issue-check + render every fixture
-│   ├── wf-*.sh                # per-capability acceptance suites
+│   ├── *.sh                   # per-capability acceptance suites (incl. qa.sh)
+│   ├── probes/                # research probes (large-document, version detection)
 │   └── fixtures/        # real DOCX inputs/outputs for round-trip testing
 ├── docs/
 │   ├── README.md
+│   ├── distribution.md  # install & discovery per agent
 │   └── adr/             # architecture decision records
 ├── report/              # dated work reports (see report/README.md)
-└── .agents/skills/      # engineering workflow skills (Matt Pocock set)
+├── .agents/skills/      # skill entries; engineering workflow skills (Matt Pocock set)
+└── .claude/skills/      # Claude Code skill discovery
 ```
 
 `references/` is intentionally split by *concern* rather than by OfficeCLI element, because the same element (e.g. `paragraph`) appears in several concerns.
@@ -92,10 +95,12 @@ wordflow/
 
 ## Status
 
-**Walking skeleton.** The foundation capabilities (style ownership, page/section setup, the
+**Foundation hardened.** The foundation capabilities (style ownership, page/section setup, the
 standard style set + Simplified-Chinese typography, intake/precedence/source protection, the
-change-report contract, render preview, the warn/downgrade/stop policy, and a cross-application
-compatibility harness) are implemented and tested, and a single-document **end-to-end pipeline**
-runs. The document features (#19–#27) and the full workflows (#32/#33) are not built yet.
+change-report contract, render preview, the warn/downgrade/stop policy, the TOC and cross-reference
+cache mechanisms, a cross-application compatibility harness, and skill discovery per agent) are
+implemented and tested; a single-document **end-to-end pipeline** runs; and an **executable QA /
+Definition-of-Done gate** (`scripts/wf-qa.sh`) checks a delivered document. The document features
+(#19–#27) and the full workflows (#32/#33) are not built yet.
 
 **Current status lives in [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).**

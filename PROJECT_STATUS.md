@@ -5,10 +5,11 @@ decided, what is verified, where the work stands, and what is next. It summarise
 links; the ADRs hold the full arguments and `references/research/` holds the evidence.
 
 - **Last updated:** 2026-10-01
-- **Verified tooling:** OfficeCLI `1.0.152`; Word `16.0`; WPS Writer `12.0`; LibreOffice `24.2.7.2`
-- **Phase:** foundation, the single-document **walking skeleton**, and the first cross-application
-  compatibility research wave are **implemented and merged**; the document **features (#19–#27) are
-  not built yet**. See **Implementation status** and §6.
+- **Verified tooling:** OfficeCLI `1.0.153` (baseline `1.0.152`; the drift is noted in the #9/#11 references); Word `16.0`; WPS Writer `12.0`; LibreOffice `24.2.7.2`
+- **Phase:** foundation complete and hardened — the single-document **walking skeleton**, the first compatibility
+  research wave, the TOC and cross-reference cache mechanisms, distribution, and an **executable QA gate (#31)**
+  are implemented and merged; the document **features (#19–#27) are not built yet**. See **Implementation
+  status** and §6.
 
 ## Reading order
 
@@ -65,6 +66,12 @@ judgement; every DOCX read/write still goes through OfficeCLI (ADR-0001).
 | Warn / downgrade / stop policy | #30 | `scripts/wf-risk-policy.sh`, `references/workflow/risk-policy.md` | `tests/risk-policy.sh` |
 | Cross-application compatibility harness | #2 | `scripts/wf-compat-harness.sh`, `references/compatibility/harness.md` | `tests/compat-harness.sh` |
 | **Walking skeleton (end-to-end)** | #35 | `scripts/wf-pipeline.sh`, `references/workflow/pipeline.md` | `tests/pipeline.sh` |
+| TOC cache without page numbers | #11 | `references/fields/toc-without-page-numbers.md`, fixture `toc/toc-no-page-numbers.docx` | `tests/toc-cache.sh` |
+| Cached cross-reference text | #12 | `references/fields/cached-cross-references.md`, fixture `fields/cached-cross-ref.docx` | `tests/crossref-cache.sh` |
+| **QA / Definition-of-Done gate** | #31 | `scripts/wf-qa.sh`, `references/workflow/qa-gate.md` | `tests/qa.sh` |
+| Skill distribution & discovery | #14 | `docs/distribution.md`, `.agents/skills/wordflow/`, `.claude/skills/wordflow/` | `tests/skill-discovery.sh` |
+| Large-document & missing-font research | #9 | `references/research/large-documents-and-fonts.md` | `tests/probes/large-document.sh` |
+| Version matrix | #10 | `references/research/version-matrix.md` | `tests/probes/detect-versions.sh` |
 
 The walking skeleton (#35) runs one document through **inspect → layout decision → apply → new output
 → validate → preview → change report → risk hooks → deliver**, verifies the source is unchanged, and
@@ -156,7 +163,12 @@ Observed on OfficeCLI 1.0.152; detail in
 - **The equation FormulaParser is LaTeX-ish and never emits `m:eqArr`** (`\begin{aligned}` becomes
   `m:m`); a true equation array needs `raw-set` (#6).
 - **Harness caveat:** `wf-compat-harness.sh` hangs LibreOffice when `--out` is a **relative** path
-  (relative `file://` profile URI); pass an absolute `--out` (the default is absolute) (#37).
+  (relative `file://` profile URI); pass an absolute `--out` (the default is absolute) (#37, fixed in #38).
+- **Bulk operations:** one `officecli add` costs ≈0.77 s; 50 in one `batch` cost ≈1.5 s (~43×), and a resident
+  does not help (startup-bound). Use `batch` for repeated operations; memory (~5 KB/paragraph) and the render
+  preview are the practical limits, not per-op speed (#9).
+- **Environment drift:** the current OfficeCLI is `1.0.153` (baseline `1.0.152`); the #11/#12 recipes and the
+  #9/#10 probes were re-verified against it.
 
 ## 5. Compatibility conclusions
 
@@ -219,17 +231,21 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 
 ## 6. Tests & fixtures
 
-- `tests/fixtures/` — **29 DOCX fixtures**, one feature each; see
+- `tests/fixtures/` — **31 DOCX fixtures**, one feature each; see
   [`tests/fixtures/MANIFEST.md`](./tests/fixtures/MANIFEST.md).
 - `tests/generate-fixtures.sh` — deterministic rebuild (explicit `--locale`, closes each
   file); `tests/validate-fixtures.sh` — `validate` + `view issues` + screenshot render per
   fixture into git-ignored `tests/.out/`.
 - **Acceptance suites** (one per capability, all green): `tests/style-ownership.sh`,
   `output-naming.sh`, `page-setup.sh`, `standard-styles.sh`, `intake.sh`, `change-report.sh`,
-  `render-preview.sh`, `risk-policy.sh`, `compat-harness.sh`, `pipeline.sh`.
-- **Last full run (2026-10-01):** `validate-fixtures` **59 checks | 59 passed**;
-  `compat-harness` (real Word/WPS/LibreOffice) **39 | 39**; `pipeline` (real end-to-end)
-  **63 | 63**; all unit suites and `shellcheck -S warning` clean.
+  `render-preview.sh`, `risk-policy.sh`, `toc-cache.sh`, `crossref-cache.sh`, `qa.sh`,
+  `skill-discovery.sh`, `compat-harness.sh`, `pipeline.sh`; research probes under `tests/probes/`.
+- **QA gate:** `scripts/wf-qa.sh` is the executable Definition of Done (spec §D14) — see
+  [`references/workflow/qa-gate.md`](./references/workflow/qa-gate.md).
+- **Last full run (2026-10-01):** `validate-fixtures` **63 checks | 63 passed** (31 fixtures);
+  `qa` **33 | 33**; `compat-harness` (real Word/WPS/LibreOffice) **42 | 42**; `pipeline` (real
+  end-to-end) **63 | 63**; `toc-cache` **40 | 40**; `crossref-cache` **39 | 39**; all other unit
+  suites and `shellcheck -S warning` clean.
 - Fixtures are committed snapshots; regenerated files are not byte-identical (timestamps).
 - See [`tests/README.md`](./tests/README.md).
 
@@ -245,28 +261,27 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 - ~~Untested render items in §5~~ — nested tables (#4), first-page/odd-even headers (#5), complex
   equations (#6), CJK punctuation/kinsoku (#7) are now measured and their capability tiers **applied to the
   spec in #37** (promotions: nested tables and first-page/odd-even headers → fully supported). See §5.
+- ~~Exact version matrix (#10)~~, ~~distribution/discovery (#14)~~, ~~large-document / offline / missing-font
+  behaviour (#9)~~, ~~TOC cache without page numbers (#11)~~, ~~cached cross-reference text (#12)~~ — all
+  delivered; see the **Implementation status** table and the linked references. #36/#38/#39 (foundation bug and
+  tool/fixture defects) are fixed.
 
 **Still open:**
 
 - **Template adoption boundary** (what a template contributes vs must not) — implementation ticket #27.
-- **Exact version matrix**: which Word releases, which WPS version, LO 7.6 vs 24.8+ — #10.
-- **Distribution** (install location, discovery per agent) — #14.
-- **Large-document limits**, offline / missing-font behaviour — #9.
-- **TOC cache without page numbers** (#11) and **correct cached cross-reference text** (#12) —
-  mechanics not yet built.
-- **Tidy capability**: dangling-style repair and template/requirement application are recorded as
+- **Tidy capability**: dangling-style repair and template/formatting-requirement application are recorded as
   unverified by the walking skeleton; built out in #27/#33.
+- **Feature mechanics** for #19–#27 (headers/footers + page numbers, images, tables, captions,
+  cross-references, TOC, footnotes, equations) — the next build phase.
 
 ## 8. Next steps
 
-1. **Foundation hardening (current batch):** `#9` large-document/offline behaviour, `#10` version matrix,
-   `#11` TOC cache without page numbers, `#12` cached cross-reference text, `#14` distribution/discovery,
-   then **`#31`** QA / Definition-of-Done gate.
-2. Implement the document **features**: `#19` headers/footers + page numbers, `#20` images,
+1. Implement the document **features**: `#19` headers/footers + page numbers, `#20` images,
    `#21` tables, `#22` captions, `#23` cross-references, `#24` TOC, `#25` footnotes, `#26`
-   equations, `#27` template adoption.
-3. Then the full workflows **`#32`/`#33`** and **`#34`** v0.1 acceptance.
-4. Grow `SKILL.md` from skeleton to content as the feature set lands.
+   equations, `#27` template adoption. Each must pass the executable DoD gate (`scripts/wf-qa.sh`, #31).
+2. Then the full workflows **`#32`/`#33`** and **`#34`** v0.1 acceptance.
+3. Grow `SKILL.md` from skeleton to content as the feature set lands.
+4. Keep the reference index and this file current; record each ticket in `report/` as an audit trail.
 
 > Do **not** start the spec or implement features from this file alone; it is a status
 > entry point, not the spec.
@@ -282,6 +297,6 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 - [`report/2026-09-28-status.md`](./report/2026-09-28-status.md) — a point-in-time status snapshot; **superseded by this file**.
 
 `references/` (on-demand): `core/` (styles, sections, naming, intake), `workflow/` (change report,
-render preview, risk policy, pipeline), `compatibility/` (the cross-app harness) hold the implemented
-guidance; `fields/` and `objects/` are for future feature work; `research/` holds the tagged evidence
-and is loaded only when a task touches it.
+render preview, risk policy, pipeline, QA gate), `compatibility/` (the cross-app harness), and `fields/`
+(the TOC and cross-reference cache mechanisms) hold the implemented guidance; `objects/` is future feature
+work (per-feature evidence lives under `research/`).
