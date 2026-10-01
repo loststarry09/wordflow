@@ -96,7 +96,18 @@ json="$(inspect "$FIX/styles/caption-dangling.docx")"
 assert_eq "dangling reference: Caption detected" "$(jq -r '[.dangling_styles[]? | ascii_downcase] | index("caption") != null' <<<"$json")" "true"
 assert_eq "dangling reference: coherent false" "$(jq -r '.coherent' <<<"$json")" "false"
 
-# 5. bad usage: a missing --template argument is rejected, not a silent crash
+# 5. style identity by styleId OR display name (#36 regression)
+#    A document rebuilt with the standard style set defines the default style with
+#    styleId `Normal` and display name `正文`; `view stats` references it by styleId.
+#    Matching on display name alone produced a false dangling `Normal`.
+assert_case "standard style set (id/name identity)" "preserve-and-tidy" "$FIX/styles/standard-style-set.docx"
+json="$(inspect "$FIX/styles/standard-style-set.docx")"
+assert_eq "standard style set: no false dangling" "$(jq -c '[.dangling_styles[]?] | length' <<<"$json")" "0"
+assert_eq "standard style set: coherent true" "$(jq -r '.coherent' <<<"$json")" "true"
+assert_eq "standard style set: default Normal not named-in-use" \
+  "$(jq -r '[.named_styles_in_use[]? | ascii_downcase] | index("normal") == null' <<<"$json")" "true"
+
+# 6. bad usage: a missing --template argument is rejected, not a silent crash
 "$TOOL" "$FIX/styles/unstyled.docx" --template >/dev/null 2>&1
 assert_eq "bad usage: --template without value exits 2" "$?" "2"
 

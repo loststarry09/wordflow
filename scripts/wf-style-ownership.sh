@@ -97,25 +97,28 @@ report="$(jq -nc \
   --arg template "$TPL" '
   def lc: ascii_downcase;
   def isin($arr): . as $v | ($arr | index($v)) != null;
+  def skeys($o): [ ($o.id | lc), ($o.name | lc) ] | map(select(. != ""));
 
   [ $styles.data.results[]? | select(.type=="styles") | .children[]?
     | select(.type=="style")
-    | { name: (.format.name // .format.styleId // ""),
+    | { id:   (.format.styleId // ""),
+        name: (.format.name // .format.styleId // ""),
         default: ((.format.default // "false") == "true") } ]
-  | map(select(.name != ""))                              as $defined
+  | map(select(.name != "" or .id != ""))                 as $defined
   | ($defined | map(.name))                               as $defined_names
-  | ($defined | map(select(.default)) | map(.name))       as $default_names
+  | ([ $defined[] | skeys(.) ] | add // [] | unique)      as $defined_keys
+  | ([ $defined[] | select(.default) | skeys(.) ] | add // [] | unique) as $default_keys
   | (($stats.data.styleDistribution // {}) | keys)        as $referenced_names
-  | ($defined_names | map(lc))                            as $defined_lc
   | ($referenced_names | map(lc))                         as $referenced_lc
-  | ($default_names | map(lc))                            as $default_lc
 
-  | [$referenced_names[] | select((lc) as $n | ($n | isin($defined_lc)) | not)]           as $dangling
-  | [$defined_names[]    | select((lc) as $n
-        | (($n | isin($referenced_lc)) or ($n | isin($default_lc))) | not)]                as $unused
-  | [$referenced_names[] | select((lc) as $n | ($n | isin($default_lc)) | not)]            as $named_in_use
-  | [$referenced_names[] | select(test("^(heading|标题)[ _-]?[1-9]$"; "i"))]               as $heading_names
-  | [$heading_names[] | capture("(?<l>[1-9])").l | tonumber] | unique | sort              as $heading_levels
+  | [$referenced_names[] | select((lc) as $n | ($n | isin($defined_keys)) | not)]           as $dangling
+  | [$defined[] | select(.default | not)
+        | select( ((.id   | lc) as $i | ($i | isin($referenced_lc)) | not)
+              and ((.name | lc) as $n | ($n | isin($referenced_lc)) | not))
+        | .name] | unique                                                                   as $unused
+  | [$referenced_names[] | select((lc) as $n | ($n | isin($default_keys)) | not)]           as $named_in_use
+  | [$referenced_names[] | select(test("^(heading|标题)[ _-]?[1-9]$"; "i"))]                as $heading_names
+  | [$heading_names[] | capture("(?<l>[1-9])").l | tonumber] | unique | sort               as $heading_levels
 
   | ( [ $template_doc.data.results[]? | select(.type=="styles") | .children[]?
         | select(.type=="style") | (.format.name // .format.styleId // "") ]
