@@ -63,6 +63,12 @@ Measured on both `Word 16.0` and `WPS Writer 12.0`; results were identical.
   3. require an application pass (Word/WPS/LibreOffice) to finalise — contradicts "does not require Word".
 - **`REF` and TOC placeholders must never ship silently**; the change report must say when a reference or page number is a placeholder.
 
+> **Carve-out — page-dependent fields (#3, applied in #37).** The "cached result verbatim" rule above holds for
+> **content caches** (TOC entries, `REF`, `SEQ`). **Page-dependent** fields (`PAGE`, `NUMPAGES`, an unlocked
+> `PAGEREF`) are recomputed by the reader's layout engine per page, so a footer `PAGE`/`NUMPAGES` shows the
+> correct number per page regardless of the cache — verified in Word/WPS/LibreOffice on a multi-page probe. §3's
+> measurements used single-page/value probes and did not exercise multi-page pagination.
+
 ## 5. Verification harness notes
 
 - WSL interop is enabled but `appendWindowsPath=false`, so Windows binaries are invoked by full path (`/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`). COM ProgIDs `Word.Application`, `KWPS.Application`, `KET.Application` are registered.
@@ -87,4 +93,6 @@ Rendered the committed fixtures and two probes; inspected the PDF text and page 
 - **[V] Merged-cell tables are faithful.** A probe with `colspan=2` on the header row and `vmerge=restart|continue` down column 1 rendered exactly as intended, borders included. (Nested tables were **not** tested.)
 - **[V] Page-number restart and format work.** A two-section probe with `pageNumFmt=lowerRoman`, `pageStart=1` on section 2 rendered the section-2 footer as `i`. A centred `PAGE` footer rendered `1`. (Different-first-page and odd/even headers were **not** tested.)
 - **[V] CJK fonts substitute silently, with metric risk.** In `cjk/cjk-fonts-indent.docx`, LibreOffice embedded the real `SimSun` (present on this host) but substituted `Microsoft YaHei` with `WenQuanYi Zen Hei`. `fc-match` maps `等线`/`DengXian` to **`DejaVu Sans`**, a Latin font with no CJK coverage — so OfficeCLI's `create --locale zh-CN` default (`等线`) is **not safe** on a Linux/LibreOffice system.
-- **Untested / still documentary:** nested tables, different-first-page and odd/even headers, complex equations, and Chinese punctuation/kinsoku compression.
+- **Untested at the time / since resolved:** nested tables (#4), different-first-page and odd/even headers
+  (#5), complex equations (#6), Chinese punctuation/kinsoku compression (#7), and multi-page page numbers (#3).
+  See the individual `references/research/` notes for the Wave-3 measurements.

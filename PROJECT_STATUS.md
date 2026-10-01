@@ -99,11 +99,12 @@ Full wording in [`report/2026-09-28-requirements-grilling.md`](./report/2026-09-
 **Scope tiers**
 
 - **Fully supported**: heading hierarchy + full style set; page size/orientation/margins;
-  headers/footers + page numbers; table of contents; inline images; regular tables;
-  captions; cross-references; footnotes; basic equations.
-- **Supported with warning / downgrade**: floating images; merged-cell and nested tables;
-  multi-column layout; different first-page / odd-even headers; page-number restart;
-  complex equations.
+  headers/footers + page numbers (incl. different first-page / odd-even); table of contents;
+  inline images; regular, merged-cell, and nested tables (nested tables require
+  `tblW == Σ colWidths` + fixed layout + explicit `colWidths` + direct borders); captions;
+  content cross-references; footnotes; basic equations.
+- **Supported with warning / downgrade**: floating images; multi-column layout; page-number
+  restart; page-number cross-references; complex equations (construct-specific).
 - **Out of scope for v0.1**: editing content (ADR-0002); topic-to-article authoring;
   charts, comments, tracked changes, forms/content controls, watermarks, references &
   citation styles, mail merge, text boxes / WordArt / OLE; non-DOCX conversion; in-place
@@ -186,10 +187,9 @@ documentary per-feature notes in
 
 **Render fidelity (LibreOffice measured, via PDF render)**
 
-- Faithful: simple OMML equations; **merged-cell tables**; page-number restart +
+- Faithful: simple OMML equations; **merged-cell tables**; **nested tables** (portable construction);
+  **different first-page / odd-even headers**; multi-page footer `PAGE`/`NUMPAGES`; page-number restart +
   `lowerRoman`; centred `PAGE` footer.
-  (Merged-cell tables are still scoped as "supported with warning" in §3; the spec may
-  promote them now that they measure faithful.)
 - **Not faithful: floating (anchored) images** — rendered left-aligned and in flow, not
   centred/floating. Keep floating images in "supported with warning".
 - CJK fonts substitute silently: real `SimSun` embedded, `Microsoft YaHei` → `WenQuanYi
@@ -211,8 +211,8 @@ note under `references/research/`:
 - **Multi-page page numbers → footer `PAGE`/`NUMPAGES` safe to ship (#3).** PAGEREF/TOC page numbers
   stay limited/omitted.
 
-These findings **challenge** the earlier "untested" list and the blanket "the cached result is what the
-reader sees" claim; the spec/status changes are **not applied silently** — tracked in **#37**.
+These findings **challenged** the earlier "untested" list and the blanket "the cached result is what the
+reader sees" claim; the spec/status changes are **applied in #37** (spec §D6/§D8/§D9/§D10/§D14 and this file).
 
 **Testability:** all three applications are inspectable from this WSL environment — Word
 and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
@@ -243,7 +243,8 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 - ~~Output filename safety~~ — frozen: `-排版`, ASCII numbering, not localised (#13).
 - ~~CJK font strategy~~ — SimSun body / SimHei headings + explicit Latin faces confirmed (#8).
 - ~~Untested render items in §5~~ — nested tables (#4), first-page/odd-even headers (#5), complex
-  equations (#6), CJK punctuation/kinsoku (#7) are now measured; see §5. Spec updates: #37.
+  equations (#6), CJK punctuation/kinsoku (#7) are now measured and their capability tiers **applied to the
+  spec in #37** (promotions: nested tables and first-page/odd-even headers → fully supported). See §5.
 
 **Still open:**
 
@@ -258,12 +259,13 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 
 ## 8. Next steps
 
-1. **`#37`** — spec/status refresh from the research findings (do not edit the frozen spec silently).
+1. **Foundation hardening (current batch):** `#9` large-document/offline behaviour, `#10` version matrix,
+   `#11` TOC cache without page numbers, `#12` cached cross-reference text, `#14` distribution/discovery,
+   then **`#31`** QA / Definition-of-Done gate.
 2. Implement the document **features**: `#19` headers/footers + page numbers, `#20` images,
    `#21` tables, `#22` captions, `#23` cross-references, `#24` TOC, `#25` footnotes, `#26`
-   equations, `#27` template adoption. `#36` fixes the #16 style-matcher bug.
-3. **`#31`** QA Definition-of-Done suite, then the full workflows **`#32`/`#33`**, and **`#34`**
-   v0.1 acceptance.
+   equations, `#27` template adoption.
+3. Then the full workflows **`#32`/`#33`** and **`#34`** v0.1 acceptance.
 4. Grow `SKILL.md` from skeleton to content as the feature set lands.
 
 > Do **not** start the spec or implement features from this file alone; it is a status
