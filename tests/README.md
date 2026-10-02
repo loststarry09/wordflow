@@ -22,6 +22,7 @@ Tests exercise WordFlow's guidance against **real DOCX files** produced and insp
   - `skill-discovery.sh` (#14) — per-agent skill discovery;
   - `compat-harness.sh` (#2) — drives real Word/WPS/LibreOffice;
   - `generate.sh` (#32) — the full generate-from-content workflow (D4);
+  - `tidy.sh` (#33) — the full tidy/restyle-existing workflow (D5);
   - `pipeline.sh` (#35) — the existing-document end-to-end run.
 - `probes/` — research probes (not pass/fail gates): `large-document.sh` (#9),
   `detect-versions.sh` (#10).

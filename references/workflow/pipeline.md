@@ -24,6 +24,7 @@ Acceptance tests: [`../../tests/generate.sh`](../../tests/generate.sh) (generate
 | style-ownership decision | `scripts/wf-style-ownership.sh` (#16) | [`../core/style-ownership.md`](../core/style-ownership.md) |
 | page setup (A4 portrait, D6 margins) | `scripts/wf-page-setup.sh` (#18) | [`../core/sections.md`](../core/sections.md) |
 | rebuild outcome — standard style set | `scripts/wf-standard-styles.sh` (#17) | [`../core/styles.md`](../core/styles.md) |
+| preserve outcome — tidy (repair dangling styles) | `scripts/wf-tidy.sh` (#33) | this file |
 | template adoption (look only) | `scripts/wf-template.sh` (#27) | [`../core/template-adoption.md`](../core/template-adoption.md) |
 | headers / footers + page numbers | `scripts/wf-headers.sh` (#19) | [`../objects/headers-footers.md`](../objects/headers-footers.md) |
 | inline image / floating-image downgrade | `scripts/wf-image.sh` (#20) | [`../objects/images.md`](../objects/images.md) |
@@ -100,13 +101,26 @@ and lists the requirement under `unverified`, rather than claiming it was applie
    decision (#16): `rebuild-with-standard-styles`, `preserve-and-tidy`, or
    `use-template-styles`.
 2. **Apply layout.** `rebuild` runs `wf-standard-styles.sh`; `use-template-styles` calls
-   `wf-template.sh`; `preserve` keeps the source style set. Page setup (D6) runs unless a
-   template supplied the geometry.
-3. **Validate → report → preview → deliver** are identical to generate mode.
+   `wf-template.sh`; `preserve` runs `wf-page-setup.sh` and then `wf-tidy.sh` (#33) over the
+   preserved set. Page setup (D6) runs unless a template supplied the geometry.
+3. **Restructure guard.** Restructuring is never automatic. A `--restructure <kind>` request
+   is honoured only when every item has a matching `--confirm-restructure <kind>`; otherwise
+   the pipeline routes the request through `wf-risk-policy.sh decide --trigger
+   restructure-unconfirmed`, prints the ask, writes no output, and exits `3`. Automated
+   restructuring is not part of v0.1, so a fully confirmed request is reported as a
+   downgrade (`preferred-unavailable`, fallback=exists) and the structure and content are
+   left unchanged.
+4. **Validate → report → preview → deliver** are identical to generate mode.
 
-The **tidy** capability that repairs dangling references on the preserve path is #33;
-until it lands the pipeline preserves the styles and records any dangling reference as
-unverified rather than pretending to repair it.
+### Tidy (preserve path)
+
+`wf-tidy.sh` repairs the document's own style set without touching content: for every style
+the document **references but does not define**, it adds a definition with that exact name —
+a paragraph style based on the document's default style with explicit SimSun / Times New
+Roman fonts, so the repair never inherits OfficeCLI's unsafe locale default (`等线`/DengXian).
+Existing definitions and unused styles are left intact (non-destructive). `view stats`
+classifies paragraph styles only, so every repair is a paragraph style; character/table
+style classification is outside v0.1.
 
 ## CLI
 
@@ -125,6 +139,7 @@ wf-pipeline.sh --content <md> [--template <docx>] [--requirement <file>]
 
 wf-pipeline.sh --source <docx> [--out-dir <dir> | --output <path>]
                [--template <docx>] [--requirement <file>]
+               [--restructure <kind>] [--confirm-restructure <kind>]
                [--preview-format png|pdf] [--no-preview] [--json]
 ```
 
