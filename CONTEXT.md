@@ -29,6 +29,17 @@ Changing only the layout of a document the user already has, leaving every word,
 **Restructure**:
 Changing a document's organization — heading levels, section order, grouping of paragraphs — without changing its words. Never automatic; only on the user's explicit request and confirmation.
 
+### The two jobs
+
+**Generate**:
+Producing a laid-out document from **content** the user supplies (spec §D4). One of WordFlow's two v0.1 jobs.
+
+**Tidy**:
+Restyling an existing document — changing its layout while leaving every word, image, table, and equation untouched (spec §D5). The other v0.1 job; the implementation is the `preserve-and-tidy` path.
+
+**Capability tier**:
+How confidently WordFlow handles a construct: **fully supported** (produced with QA), **limited** (produced with a warning, or downgraded, always reported), or **out of scope** (refused). The tiers are fixed in spec §D9.
+
 ### Style ownership
 
 **Standard styles**:
