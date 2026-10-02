@@ -3,7 +3,7 @@
 # Acceptance tests for correct cached cross-reference text (#12).
 #
 # These tests exercise the *external behaviour* of the recipe documented in
-# references/fields/cached-cross-references.md: a REF content cross-reference
+# references/fields/cross-references.md: a REF content cross-reference
 # must carry the resolved target text in its cached result (never the
 # placeholder «target»), and the document must open repair-free in Word, WPS
 # Writer, and LibreOffice Writer showing that text.

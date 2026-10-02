@@ -59,7 +59,7 @@ LibreOffice 24.2, and `officecli validate` passes.
 - **[S]** OMML is the ECMA-376 math namespace Word, WPS, and LibreOffice all implement; no
   application-specific extension is required.
 - **[?]** LibreOffice 7.6, nested matrices, and matrices with fractions in cells are unmeasured;
-  the exact version matrix remains open (spec Further Notes).
+  the version matrix is pinned by `#10` (`references/research/version-matrix.md`).
 
 ## When a construct is risky
 

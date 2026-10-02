@@ -1,6 +1,6 @@
 # DOCX feature portability (research notes)
 
-Per-feature notes distilled from the DOCX research pass (see `report/2026-09-28-docx-layout-research.md`). This is a **facts** file, not product guidance.
+Per-feature notes distilled from the DOCX research pass (narrated in `report/v0.1-development-summary.md`). This is a **facts** file, not product guidance.
 
 Legend:
 - **[V]** — verified locally with OfficeCLI 1.0.152 or directly from the standard's definitions.

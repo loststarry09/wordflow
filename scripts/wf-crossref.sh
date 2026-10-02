@@ -15,7 +15,7 @@
 # (#30, trigger `preferred-unavailable` with `fallback=exists`) and in the change
 # report — never silently (spec §D9, §D11).
 #
-# Mechanism (the #12 recipe, references/fields/cached-cross-references.md):
+# Mechanism (the #12 recipe, references/fields/cross-references.md):
 #   1. the target already exists as a bookmark covering exactly the text to insert;
 #   2. add the REF field: `officecli add F <para> --type field --prop fieldType=ref`;
 #   3. write the resolved target text into the field's result run (the run after

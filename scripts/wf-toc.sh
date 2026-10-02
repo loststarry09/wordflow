@@ -15,7 +15,7 @@
 #     manual F9 / Update Table adds them.
 #
 # The construction is the #11 mechanism
-# (`references/fields/toc-without-page-numbers.md`):
+# (`references/fields/table-of-contents.md`):
 #
 #   1. define the TOC entry styles (TOC 1..TOC 3; the standard set defines them —
 #      add the standard definitions only when the source lacks them) so the

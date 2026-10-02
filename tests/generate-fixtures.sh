@@ -51,7 +51,7 @@ setp() { # setp <file> <path> <args...>
 # the w:dirty marker OfficeCLI adds when the cached result changes. Writing the
 # cache is a `set` on the field's result run; clearing dirty is raw-set because
 # the field element exposes no `dirty` property. See
-# references/fields/cached-cross-references.md.
+# references/fields/cross-references.md.
 clear_field_dirty() { # <file>
   officecli raw-set "$1" /document \
     --xpath '//w:fldChar[@w:fldCharType="begin" and @w:dirty="true"]' \

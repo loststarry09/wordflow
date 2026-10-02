@@ -152,7 +152,7 @@ offered.
   (Claude platform docs, *Agent Skills*); the `skills` CLI's agent→directory map
   (opencode/Codex → `.agents/skills`, Claude → `.claude/skills`).
 
-## Open items
+## Unverified (not blockers)
 
 - `[?]` Claude Code discovery and symlink-following are unverified locally (no
   CLI); the manual check above is the confirmation step.

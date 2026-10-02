@@ -145,18 +145,21 @@ field on F9 / Update Field; the cached result is meant to stay put. Two control 
 
 ## Spec / documentation conflicts raised by this evidence
 
+All four points below were applied to the spec and references in #37 (spec §D8/§D9/§D14 and
+`PROJECT_STATUS.md` §5); the wording here records what the evidence challenged.
+
 1. **`PROJECT_STATUS.md` §5** and `references/research/field-recalc-and-cross-app-verification.md`
    (§3–§4) state: *"no application updates fields on its own. The cached result **is** what the
    reader sees."* This is **not true for page-dependent fields**. `PAGE`/`NUMPAGES` are computed
    by every application from the current layout, and an unlocked `PAGEREF` is rendered with a
    recomputed page number. The earlier conclusion was drawn from the COM field result
    (the *stored cache*), which for page fields is not what is displayed.
-2. **Spec §D8** declares the multi-page page-number behaviour *unverified*; this study verifies
-   it positively. D8 and the Further Notes open item should be updated (no downgrade needed for
+2. **Spec §D8** declared the multi-page page-number behaviour *unverified*; this study verified
+   it positively. D8 and the Further Notes item were updated in #37 (no downgrade needed for
    footer page numbers).
 3. **Spec §D14** ("no field is judged … on flags alone — a field is judged by its **cached
-   text**") needs a carve-out: for `PAGE`/`NUMPAGES` the cached text is legitimately stale and
-   the display is nevertheless correct; the cached-text rule still governs TOC/REF/SEQ.
+   text**") gained a carve-out in #37: for `PAGE`/`NUMPAGES` the cached text is legitimately
+   stale and the display is nevertheless correct; the cached-text rule still governs TOC/REF/SEQ.
 4. **`references/compatibility/harness.md`** says the LibreOffice `render.pdf` *"shows the cached
    result as rendered"* and that `app_field_cache` *"records what that application will actually
    display"*. Both are wrong for page-dependent fields: LibreOffice recomputes

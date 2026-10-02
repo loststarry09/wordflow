@@ -1,109 +1,109 @@
 # WordFlow
 
-> A Word layout **Skill for Agents**.
-> OfficeCLI operates DOCX; WordFlow teaches an Agent how to use OfficeCLI to lay out Word documents in a standards-based, maintainable, compatibility-first way.
+> A Word layout **skill for agents**.
+> OfficeCLI operates `.docx` files; WordFlow teaches an agent how to use OfficeCLI to lay out
+> Word documents in a standards-based, maintainable, compatibility-first way.
 
-## Where to start (Agent reading order)
+**v0.1.0 — shipped.** Generate a laid-out `.docx` from content, or tidy an existing one,
+without touching its words.
 
-Read these first, in order — they are the whole default context:
+## What it is
 
-1. [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) — authoritative current status: what is decided, verified, and next.
-2. [`CONTEXT.md`](./CONTEXT.md) — the ubiquitous language.
-3. [`SKILL.md`](./SKILL.md) — the agent-facing entry point.
-4. Then only the **ADR or `references/` file the task actually touches**.
+Agents can already read and write DOCX through OfficeCLI, but knowing *which* OOXML features
+to use — and which to avoid — is the hard part. WordFlow is the judgement layer between "the
+CLI can do this" and "this document will open correctly and stay maintainable in Microsoft
+Word, WPS Writer, and LibreOffice Writer".
 
-Do **not** read `report/` by default: it is a dated audit trail, opened only to trace how a
-decision or fact was reached (see [`report/README.md`](./report/README.md)).
+- **Role:** a skill/knowledge layer, not an engine.
+- **Executor:** [OfficeCLI](https://officecli.ai) is the default and only tool for DOCX
+  operations — WordFlow adds judgement, not another API.
+- **Audience:** users who are not Word layout experts and want a correct, standards-based
+  result.
+- **Output:** DOCX files that are portable, style-driven, reproducible, and easy to keep
+  maintaining.
 
-## Why this exists
+## The two jobs
 
-Agents can already read and write DOCX through OfficeCLI, but knowing *which* OOXML features to use — and which to avoid — is the hard part. WordFlow is the missing layer of judgement between "the CLI can do this" and "this document will open correctly and stay maintainable in Microsoft Word, WPS Writer, and LibreOffice Writer."
+WordFlow does two jobs of equal priority:
 
-## Positioning
+- **Generate from content** — hand it text/Markdown (optionally a template and/or a written
+  formatting requirement) and get a laid-out, style-driven document.
+- **Tidy an existing `.docx`** — restyle it while leaving every word, image, table, and
+  equation untouched.
 
-- **Role**: a skill/knowledge layer, not an engine.
-- **Executor**: [OfficeCLI](https://officecli.ai) is the default and only tool for DOCX operations.
-- **Audience**: users who are not Word layout experts and want a correct, standards-based result.
-- **Output**: DOCX files that are portable, style-driven, reproducible, and easy to keep maintaining.
+Both produce a **new** file named `<source name>-排版.docx` (numbered on collision), a
+five-area **change report** (what changed, decisions, warnings, downgrades, unverified items),
+and a **render preview** by default. The source is never modified.
 
-## Goals
+## v0.1 capabilities
 
-- Help non-experts produce properly laid-out DOCX files.
-- Use Word's real features correctly: styles, headings, page margins, headers/footers, images, tables, captions, tables of contents, references, cross-references, footnotes, equations, and fields.
-- Prefer standard, widely supported DOCX / OOXML capabilities.
-- Stay compatible with Microsoft Word, WPS Writer, and LibreOffice Writer.
-- Avoid dependence on Microsoft Word–proprietary behaviour.
-- Delegate all DOCX mutation to OfficeCLI; encode the *how* and *why* here.
+**Fully supported:** heading hierarchy (levels 1–4) and a full standard style set; page size,
+orientation, margins; headers/footers and page numbers including different-first-page and
+odd/even; table of contents; inline images; regular, merged-cell, and nested tables; captions;
+content cross-references; footnotes; basic inline/display equations.
 
-## Non-goals
+**Supported with a warning or a reported downgrade:** floating images (→ centred inline),
+multi-column layout, page-number restart, page-number cross-references (→ content reference),
+complex equations.
 
-- Re-implementing anything OfficeCLI already does (create/read/query/set/add/remove/dump/batch, raw XML, validation).
-- Shipping a DOCX parser, renderer, or a replacement for python-docx / pandoc / OfficeCLI.
-- Requiring Microsoft Word (or Windows) to produce a valid document.
-- Emitting Word-only features when a portable alternative exists.
-- Being a general document-conversion tool (PDF, Markdown, etc.).
+**Out of scope:** editing content, in-place editing, charts/comments/tracked changes/forms/
+watermarks/mail merge/text boxes, non-DOCX conversion, a standalone CLI, any Word/Windows
+dependency.
 
-## Core principles
+Simplified Chinese is a first-class default (SimSun body, SimHei headings, explicit Latin
+pairing, 2-character first-line indent) — no configuration needed.
 
-1. **OfficeCLI is the single execution layer.** Every DOCX read or write goes through it; this project adds judgement, not another API.
-2. **Compatibility first.** If Word, WPS, and LibreOffice do not all handle a feature well, prefer the portable construction.
-3. **Styles drive formatting.** Set paragraph/character styles; avoid per-run ad-hoc formatting, because styles are what keep documents consistent and maintainable.
-4. **Standards over shortcuts.** Prefer OOXML constructs with broad support; reach for `raw-set` only when the DOM layer cannot express it, and document why.
-5. **Reproducible by construction.** Prefer declarative, replayable operations (styles + `dump`/`batch`) so a layout can be regenerated, not hand-tweaked.
-6. **Verify, then report.** Validate with OfficeCLI's schema check and issue view before calling a document done.
-7. **Progressive disclosure.** The skill stays small; layout knowledge lives under `references/` and is loaded only when a task needs it.
+## Compatibility
 
-## Project layout
+A document is **portable** when Microsoft Word, WPS Writer, and LibreOffice Writer each open
+it **without a repair prompt** and render it faithfully from a shared portable subset — not
+pixel-identical (ADR-0004). The v0.1 acceptance run measured **12/12 output × application
+records repair-free** (4 outputs × 3 applications). No application recalculates fields on
+open, so WordFlow pre-computes and verifies every cache.
 
+## Install & use
+
+WordFlow is a skill, not a CLI. Requires **OfficeCLI** `>= 1.0.152` on `PATH`
+(`officecli --version`) — a single binary, no Office install needed.
+
+- **In this repo (zero-install):** opening a fresh agent session in a clone discovers the
+  skill via the committed entry directories (`.agents/skills/wordflow`,
+  `.claude/skills/wordflow`). Read [`SKILL.md`](./SKILL.md) as the entry point.
+- **Global install:** see [`docs/distribution.md`](./docs/distribution.md) for per-agent
+  locations (opencode / Claude Code / Codex) and commands.
+
+The workflows are driven by `scripts/wf-pipeline.sh`; feature capabilities are the individual
+`scripts/wf-*.sh` tools. Every DOCX read/write goes through OfficeCLI.
+
+## Testing
+
+```sh
+tests/acceptance.sh        # v0.1 end-to-end acceptance (51 checks)
+tests/validate-fixtures.sh # validate + issue-check + render all 32 fixtures (65 checks)
+tests/pipeline.sh          # existing-document end-to-end (63)
+tests/generate.sh          # generate-from-content workflow (73)
+tests/tidy.sh              # tidy-existing workflow (54)
+tests/compat-harness.sh    # real Word / WPS / LibreOffice (42)
 ```
-wordflow/
-├── README.md            # this file
-├── PROJECT_STATUS.md    # authoritative current status (read first)
-├── CONTEXT.md           # ubiquitous language / glossary
-├── SKILL.md             # agent-facing entry point (minimal; grows over time)
-├── .gitignore
-├── scripts/             # reproducible operations that drive OfficeCLI (wf-*.sh)
-├── references/          # layout knowledge, disclosed on demand (see references/README.md)
-│   ├── README.md
-│   ├── core/            # styles, sections, page setup, naming, intake, style ownership
-│   ├── workflow/        # change report, render preview, risk policy, pipeline, QA gate
-│   ├── fields/          # fields, TOC, captions, cross-references, footnotes
-│   ├── objects/         # images, tables, equations, headers/footers
-│   ├── compatibility/   # cross-application harness; Word / WPS / LibreOffice rules
-│   └── research/        # researched facts, tagged verified / standard / uncertain
-├── tests/
-│   ├── README.md
-│   ├── generate-fixtures.sh   # deterministically rebuild fixtures/ with OfficeCLI
-│   ├── validate-fixtures.sh   # validate + issue-check + render every fixture
-│   ├── *.sh                   # per-capability acceptance suites (incl. qa.sh)
-│   ├── probes/                # research probes (large-document, version detection)
-│   └── fixtures/        # real DOCX inputs/outputs for round-trip testing
-├── docs/
-│   ├── README.md
-│   ├── distribution.md  # install & discovery per agent
-│   └── adr/             # architecture decision records
-├── report/              # dated work reports (see report/README.md)
-├── .agents/skills/      # skill entries; engineering workflow skills (Matt Pocock set)
-└── .claude/skills/      # Claude Code skill discovery
-```
 
-`references/` is intentionally split by *concern* rather than by OfficeCLI element, because the same element (e.g. `paragraph`) appears in several concerns.
+**v0.1.0:** 1,495 checks across 27 suites, all passing; `shellcheck -S warning` clean. See
+[`tests/README.md`](./tests/README.md) for the full suite list.
 
-## Prerequisites
+## Known limitations
 
-- **OfficeCLI** `>= 1.0.152` on `PATH` (`officecli --version`). It is a single binary with no Office installation required.
+- Formatting-requirement overrides **without a template** are reported unverified rather than
+  faked.
+- **Automated restructuring** is not in v0.1; a confirmed request is a reported downgrade.
+- **Floating images** are downgraded to centred inline (LibreOffice renders them in flow).
+- **Pagination is not pixel-identical** across applications.
+- TOC **page numbers are intentionally omitted**; update the field (F9) to add them.
 
-## Status
+## Documentation
 
-**Features implemented.** The foundation capabilities (style ownership, page/section setup, the
-standard style set + Simplified-Chinese typography, intake/precedence/source protection, the
-change-report contract, render preview, the warn/downgrade/stop policy, the TOC and cross-reference
-cache mechanisms, a cross-application compatibility harness, and skill discovery per agent) are
-implemented and tested; the document **features #19–#27** (headers/footers + page numbers, images,
-tables, captions, cross-references, TOC, footnotes, equations, template adoption) are implemented as
-self-contained capability scripts, each with a fixture-driven acceptance suite; a single-document
-**end-to-end pipeline** runs; and an **executable QA / Definition-of-Done gate** (`scripts/wf-qa.sh`)
-checks a delivered document. The full **workflows (#32/#33)** and **v0.1 acceptance (#34)** are not
-built yet.
-
-**Current status lives in [`PROJECT_STATUS.md`](./PROJECT_STATUS.md).**
+- [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) — authoritative current state (read first).
+- [`CONTEXT.md`](./CONTEXT.md) — the ubiquitous language.
+- [`SKILL.md`](./SKILL.md) — the agent-facing entry point.
+- [`docs/spec/v0.1.md`](./docs/spec/v0.1.md) — the behaviour v0.1 promises.
+- [`references/README.md`](./references/README.md) — layout knowledge, disclosed on demand.
+- [`docs/adr/`](./docs/adr/) — architecture decisions.
+- [`report/`](./report/) — the v0.1 development summary and acceptance evidence.

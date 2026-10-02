@@ -2,8 +2,10 @@
 
 WordFlow teaches an agent how to lay out `.docx` documents by driving OfficeCLI. Before
 working, read in order: [`PROJECT_STATUS.md`](./PROJECT_STATUS.md),
-[`CONTEXT.md`](./CONTEXT.md), [`SKILL.md`](./SKILL.md). Read `report/` only to trace a
-decision, and load an individual ADR or `references/` file only when the task touches it.
+[`CONTEXT.md`](./CONTEXT.md), [`SKILL.md`](./SKILL.md), then
+[`docs/spec/v0.1.md`](./docs/spec/v0.1.md) for the contract. Read `report/` only for the v0.1
+development summary or the acceptance evidence, and load an individual ADR or `references/`
+file only when the task touches it.
 
 ## Agent skills
 

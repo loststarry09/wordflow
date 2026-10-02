@@ -1,6 +1,6 @@
 # OfficeCLI behaviour (verified notes)
 
-Durable notes on what OfficeCLI actually does, distilled from the DOCX research pass (see `report/2026-09-28-docx-layout-research.md`). This is a **facts** file, not product guidance.
+Durable notes on what OfficeCLI actually does, distilled from the DOCX research pass (narrated in `report/v0.1-development-summary.md`). This is a **facts** file, not product guidance.
 
 Legend:
 - **[V]** — verified by running OfficeCLI locally (version below).

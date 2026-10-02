@@ -186,10 +186,10 @@ prints the ask, writes no output, and exits `3`.
   styles and section geometry are equal between runs; byte-identity is not expected
   because OfficeCLI stamps timestamps).
 
-## Known upstream gaps (owned elsewhere)
+## Known limitations
 
-1. **#16 matches by display name only.** `view stats` can label the default style by its
-   styleId while it is defined with a different display name, so #16 can report it as
-   dangling. The pipeline's own D14 check matches styleId **or** name.
-2. **Formatting-requirement overrides** need a template (or #33's tidy vocabulary) to
-   apply against; without one they are recorded, not faked.
+1. **Formatting-requirement overrides** need a template (or #33's tidy vocabulary) to
+   apply against; without one they are recorded under `unverified`, not faked.
+2. **Automated restructuring** is not part of v0.1: a fully confirmed `--restructure`
+   request is reported as a downgrade and the structure/content are left unchanged (spec
+   §D5.5).

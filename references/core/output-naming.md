@@ -136,8 +136,9 @@ verified (`[ -e ]` counts both).
 A filename is an operating-system concern of the open/save path, not part of the DOCX
 package, so no application introduces its own reserved characters. One caveat: a legacy
 Windows console or tool under a non-UTF-8 code page (e.g. `cmd.exe` code page 437) may
-*display* CJK as mojibake, but the stored filename is correct. The exact per-version matrix
-remains open (`#10`), so cross-app filename behaviour is tagged `[S]` rather than `[V]`.
+*display* CJK as mojibake, but the stored filename is correct. The version matrix was pinned
+by `#10` (`references/research/version-matrix.md`); cross-app filename behaviour is tagged
+`[S]` rather than `[V]`.
 
 ## Reproducible operation
 

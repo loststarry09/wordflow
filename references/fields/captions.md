@@ -4,7 +4,7 @@ How WordFlow produces a **figure or table caption** that uses the Caption style 
 automatic numbering field (`SEQ`) whose *cached result is correct and never a placeholder*,
 so the document never ships a stale or placeholder number. This is the caption reference
 for issue [#22](https://github.com/loststarry09/wordflow/issues/22); the same mechanism is
-consumed by cross-references ([`cached-cross-references.md`](./cached-cross-references.md)).
+consumed by cross-references ([`cross-references.md`](./cross-references.md)).
 
 Companion evidence:
 [`../research/field-recalc-and-cross-app-verification.md`](../research/field-recalc-and-cross-app-verification.md)
@@ -119,7 +119,7 @@ placeholder cache is never shipped silently.
 A cross-reference to an auto-numbered caption is a separate capability (#23). The
 measured limitation is that a bookmark spanning a live `SEQ` result is dropped by
 LibreOffice, so the reference must target plain text or be downgraded
-([`cached-cross-references.md`](./cached-cross-references.md) §5). WordFlow keeps the
+([`cross-references.md`](./cross-references.md) §LibreOffice divergence). WordFlow keeps the
 caption's own `SEQ` numbering and the cross-reference mechanism separate.
 
 ## 6. Reproduction
