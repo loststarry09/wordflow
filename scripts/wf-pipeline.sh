@@ -16,6 +16,7 @@
 #   #15 scripts/wf-intake.sh           precedence, source protection, output plan
 #   #16 scripts/wf-style-ownership.sh  the rebuild/preserve/template decision
 #   #17 scripts/wf-standard-styles.sh  the rebuild outcome (standard style set)
+#   #33 scripts/wf-tidy.sh             the preserve outcome (repair dangling styles)
 #   #18 scripts/wf-page-setup.sh       page setup, applied on every path
 #   #27 scripts/wf-template.sh         adopt a template's look (never content)
 #   #13 scripts/wf-output-name.sh      default naming + collision numbering
@@ -46,6 +47,7 @@
 #   wf-pipeline.sh --source <docx> | --content <file> [options]
 #                  [--out-dir <dir> | --output <path>]
 #                  [--template <docx>] [--requirement <file>] [--locale <loc>]
+#                  [--restructure <kind>] [--confirm-restructure <kind>]
 #                  [--preview-format png|pdf] [--no-preview] [--json]
 #                  [feature options]
 #
@@ -57,6 +59,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INTAKE="$SCRIPT_DIR/wf-intake.sh"
 STYLE_OWNERSHIP="$SCRIPT_DIR/wf-style-ownership.sh"
+TIDY="$SCRIPT_DIR/wf-tidy.sh"
 PAGE_SETUP="$SCRIPT_DIR/wf-page-setup.sh"
 STD_STYLES="$SCRIPT_DIR/wf-standard-styles.sh"
 TEMPLATE="$SCRIPT_DIR/wf-template.sh"
@@ -88,6 +91,13 @@ file.
 Source (exactly one):
   --source <docx>            Tidy/restyle an existing document (read-only).
   --content <file>           Generate from a text/Markdown content file.
+
+Restructuring (spec D5.5; never automatic):
+  --restructure <kind>       Request a structural change, repeatable. Kinds:
+                             heading-levels | section-order | paragraph-grouping.
+  --confirm-restructure <kind>
+                             Confirm one requested change item by item. A
+                             request with no matching confirmation stops and asks.
 
 Look:
   --out-dir <dir>            Directory for output, preview, and report.
@@ -174,6 +184,8 @@ TOC_ON=0; TOC_LEVELS=""; TOC_TITLE=""
 FN_TEXT=""; FN_PARA=""
 EQ_FORMULA=""; EQ_MODE=""; EQ_PARA=""
 declare -a MERGES=()
+declare -a RESTRUCTURE=()
+declare -a CONFIRM_RESTRUCTURE=()
 
 require_val() { (($# >= 2)) || { echo "$TOOL: $1 requires a value" >&2; exit 2; }; }
 
@@ -225,6 +237,8 @@ while (($#)); do
     --equation-mode) require_val "$@"; EQ_MODE="$2"; shift 2 ;;
     --equation-para) require_val "$@"; EQ_PARA="$2"; shift 2 ;;
     --preview-format) require_val "$@"; PREVIEW_FMT="$2"; shift 2 ;;
+    --restructure)  require_val "$@"; RESTRUCTURE+=("$2"); shift 2 ;;
+    --confirm-restructure) require_val "$@"; CONFIRM_RESTRUCTURE+=("$2"); shift 2 ;;
     --no-preview)   PREVIEW=0; shift ;;
     --json)         JSON=1; shift ;;
     -h|--help)      usage; exit 0 ;;
@@ -241,6 +255,7 @@ die_usage() { echo "$TOOL: $*" >&2; exit 2; }
 [[ -z "$CONTENT" || -f "$CONTENT" ]] || die_usage "content not found: $CONTENT"
 [[ -z "$TPL" || -f "$TPL" ]] || die_usage "template not found: $TPL"
 [[ -z "$REQ" || -f "$REQ" ]] || die_usage "requirement not found: $REQ"
+(( ${#RESTRUCTURE[@]} == 0 )) || [[ -n "$SRC" ]] || die_usage "--restructure applies to an existing document (--source), not generated content"
 [[ -n "$OUT_DIR" && -n "$OUT_PATH" ]] && die_usage "--out-dir and --output are mutually exclusive"
 [[ "$PREVIEW_FMT" == "png" || "$PREVIEW_FMT" == "pdf" ]] || die_usage "unsupported preview format: $PREVIEW_FMT"
 [[ -z "$IMG" || -f "$IMG" ]] || die_usage "image not found: $IMG"
@@ -249,7 +264,7 @@ die_usage() { echo "$TOOL: $*" >&2; exit 2; }
 for bin in officecli jq sha256sum cp; do
   command -v "$bin" >/dev/null || die_usage "$bin not found on PATH"
 done
-for tool in "$INTAKE" "$STYLE_OWNERSHIP" "$PAGE_SETUP" "$STD_STYLES" "$TEMPLATE" \
+for tool in "$INTAKE" "$STYLE_OWNERSHIP" "$TIDY" "$PAGE_SETUP" "$STD_STYLES" "$TEMPLATE" \
             "$HEADERS" "$IMAGE" "$TABLE" "$CAPTION" "$CROSSREF" "$TOC" "$FOOTNOTE" \
             "$EQUATION" "$CHANGE_REPORT" "$RENDER_PREVIEW" "$RISK"; do
   [[ -x "$tool" ]] || die_usage "missing or non-executable capability: $tool"
@@ -364,6 +379,32 @@ printf '%s' "$plan" > "$PLAN_ART"
 # --- 2. the single change report (created empty, then filled) ---------------
 "$CHANGE_REPORT" new --source "$IN_ABS" --output "$FINAL" --out "$REPORT_JSON" >/dev/null
 add() { local area="$1"; shift; "$CHANGE_REPORT" add --report "$REPORT_JSON" --area "$area" "$@"; }
+
+# --- 2b. restructure guard (spec D5.5, D11) ---------------------------------
+# Restructuring is never automatic: it needs an explicit request AND per-item
+# confirmation. Without both, WordFlow stops and asks; it never restructures a
+# document on its own. Automated restructuring is not part of v0.1, so a fully
+# confirmed request is reported as a downgrade (structure/content unchanged)
+# rather than silently ignored.
+if (( ${#RESTRUCTURE[@]} > 0 )); then
+  missing=()
+  for k in "${RESTRUCTURE[@]}"; do
+    confirmed=0
+    for c in ${CONFIRM_RESTRUCTURE[@]+"${CONFIRM_RESTRUCTURE[@]}"}; do
+      [[ "$c" == "$k" ]] && confirmed=1
+    done
+    (( confirmed )) || missing+=("$k")
+  done
+  if (( ${#missing[@]} > 0 )); then
+    ask="$("$RISK" decide --trigger restructure-unconfirmed --json 2>/dev/null | jq -r '.ask // empty' || true)"
+    echo "$TOOL: STOP — restructuring was requested without per-item confirmation: ${missing[*]}" >&2
+    [[ -n "$ask" ]] && echo "$TOOL: ask the user — $ask" >&2
+    exit 3
+  fi
+  "$RISK" emit --report "$REPORT_JSON" --trigger preferred-unavailable --fact fallback=exists \
+    --detail "restructuring was requested and confirmed (${RESTRUCTURE[*]}), but automated restructuring is not part of v0.1; the document's structure and content are left unchanged" >/dev/null
+  add decisions --entry "Restructuring: confirmed item by item (${RESTRUCTURE[*]}); automated restructuring is not part of v0.1, so content and structure were left unchanged (spec D5.5)."
+fi
 
 # merge_report <feature-report.json>: fold a feature's five areas into the one
 # report. Every capability writes the #28 contract, so the areas translate 1:1.
@@ -506,7 +547,11 @@ else
       add changed --entry "Style ownership: preserved the source's own named style set; no rebuild applied."
       add decisions --entry "Style ownership: preserve-and-tidy — the source already uses named styles, so they are kept (spec D5.3)."
       add decisions --entry "Page setup: WordFlow default (A4 portrait, margins top/bottom 2.54cm, left/right 3.17cm; spec D6) applied because nothing specified otherwise."
-      CURRENT="$WORK/setup.docx" ;;
+      CURRENT="$WORK/setup.docx"
+      # Tidy the preserved set: define any referenced-but-undefined style so no
+      # reference dangles (spec D5.3, D7, D14).
+      run_cap "tidy (#33)" "$TIDY"
+      add decisions --entry "Tidy: repaired the source's own style set (spec D5.3) — see the tidy entries above; no content was changed." ;;
     use-template-styles)
       tpl_args=("--template" "$(abs "$TPL")")
       [[ -n "$REQ" ]] && tpl_args+=("--requirement" "$(abs "$REQ")")
@@ -526,10 +571,10 @@ if [[ -n "$REQ" && "$STYLE_SET" != "template" ]]; then
   add unverified --entry "[formatting-requirement] A formatting requirement was supplied but no template path could apply its machine-applicable overrides; the WordFlow defaults were used. Requirement application without a template is not implemented in this slice."
 fi
 
-if [[ "$MODE" != "generate" ]]; then
+if [[ "$MODE" != "generate" && "$DECISION" != "preserve-and-tidy" ]]; then
   mapfile -t dangling < <(jq -r '.style.dangling_styles[]?' <<<"$plan")
   if [[ ${#dangling[@]} -gt 0 ]]; then
-    add unverified --entry "[tidy-pending] The source references undefined style(s): ${dangling[*]}. Repairing them is the tidy step's job (built out under #33)."
+    add unverified --entry "[tidy-pending] The source references undefined style(s): ${dangling[*]}. The tidy step repairs the preserve path; on this path the reference is left as-is and reported."
   fi
 fi
 
@@ -677,6 +722,10 @@ src_unchanged=0; [[ "$src_sha_after" == "$IN_SHA_BEFORE" && "$IN_SHA_BEFORE" == 
 "$CHANGE_REPORT" render --report "$REPORT_JSON" --format markdown > "$REPORT_MD"
 
 # --- 11. deliver ------------------------------------------------------------
+restructure_json="$(jq -nc \
+  --argjson requested "$(printf '%s\n' ${RESTRUCTURE[@]+"${RESTRUCTURE[@]}"} | jq -Rsc 'split("\n") | map(select(length>0))')" \
+  --argjson confirmed "$(printf '%s\n' ${CONFIRM_RESTRUCTURE[@]+"${CONFIRM_RESTRUCTURE[@]}"} | jq -Rsc 'split("\n") | map(select(length>0))')" \
+  '{requested: $requested, confirmed: $confirmed}')"
 if (( JSON )); then
   jq -nc \
     --arg tool "$TOOL" \
@@ -685,6 +734,7 @@ if (( JSON )); then
     --arg output "$FINAL" \
     --arg decision "$DECISION" \
     --arg style_source "$STYLE_SOURCE" \
+    --argjson restructure "$restructure_json" \
     --argjson collision "$(jq -c '.output | {collision_index, numbered, mode}' <<<"$plan")" \
     --arg report_json "$REPORT_JSON" \
     --arg report_md "$REPORT_MD" \
@@ -696,7 +746,7 @@ if (( JSON )); then
     --argjson source_unchanged "$([[ $src_unchanged == 1 ]] && echo true || echo false)" \
     --argjson report "$(cat "$REPORT_JSON")" \
     '{status:"delivered", tool:$tool, mode:$mode, source:$source, output:$output, decision:$decision,
-      style_source:$style_source, collision:$collision,
+      style_source:$style_source, restructure:$restructure, collision:$collision,
       preview:$preview, qa:$qa, source_unchanged:$source_unchanged,
       artifacts:{output:$output, input:$input_copy, plan:$plan, report_json:$report_json, report_md:$report_md},
       report:$report}'
