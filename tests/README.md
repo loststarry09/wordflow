@@ -21,7 +21,8 @@ Tests exercise WordFlow's guidance against **real DOCX files** produced and insp
   - `qa.sh` (#31) — the Definition-of-Done gate;
   - `skill-discovery.sh` (#14) — per-agent skill discovery;
   - `compat-harness.sh` (#2) — drives real Word/WPS/LibreOffice;
-  - `pipeline.sh` (#35) — the real single-document end-to-end run.
+  - `generate.sh` (#32) — the full generate-from-content workflow (D4);
+  - `pipeline.sh` (#35) — the existing-document end-to-end run.
 - `probes/` — research probes (not pass/fail gates): `large-document.sh` (#9),
   `detect-versions.sh` (#10).
 - `.out/` — generated renders, pipeline and probe artifacts. Not committed.
