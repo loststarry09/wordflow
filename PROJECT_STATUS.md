@@ -4,14 +4,15 @@
 decided, what is verified, where the work stands, and what is next. It summarises and
 links; the ADRs hold the full arguments and `references/research/` holds the evidence.
 
-- **Last updated:** 2026-10-01
+- **Last updated:** 2026-10-02
 - **Verified tooling:** OfficeCLI `1.0.153` (baseline `1.0.152`; the drift is noted in the #9/#11 references); Word `16.0`; WPS Writer `12.0`; LibreOffice `24.2.7.2`
 - **Phase:** foundation complete and hardened, and the document **features #19–#27 are implemented and
   merged** as self-contained capabilities (each with a fixture-driven acceptance suite) — the single-document
   **walking skeleton**, the compatibility research wave, the TOC/cross-reference mechanisms, distribution, the
   **executable QA gate (#31)**, and the features (headers/footers + page numbers, images, tables, captions,
-  cross-references, TOC, footnotes, equations, template adoption) are all in. The full **workflows #32/#33**
-  and **v0.1 acceptance #34** remain. See **Implementation status** and §6.
+  cross-references, TOC, footnotes, equations, template adoption) are all in. The two full **workflows #32
+  (generate-from-content) and #33 (tidy-existing)** are implemented and merged, so the walking skeleton is
+  subsumed; only **v0.1 acceptance #34** remains. See **Implementation status** and §6.
 
 ## Reading order
 
@@ -83,6 +84,8 @@ judgement; every DOCX read/write still goes through OfficeCLI (ADR-0001).
 | Footnotes | #25 | `scripts/wf-footnote.sh`, `references/fields/footnotes.md` | `tests/footnote.sh` |
 | Equations | #26 | `scripts/wf-equation.sh`, `references/objects/equations.md` | `tests/equation.sh` |
 | Template adoption (look only) | #27 | `scripts/wf-template.sh`, `references/core/template-adoption.md` | `tests/template.sh` |
+| **Generate-from-content workflow** | #32 | `scripts/wf-pipeline.sh` (generate mode), `references/workflow/pipeline.md` | `tests/generate.sh` |
+| **Tidy-existing workflow** | #33 | `scripts/wf-tidy.sh`, `scripts/wf-pipeline.sh` (restyle mode) | `tests/tidy.sh` |
 
 The walking skeleton (#35) runs one document through **inspect → layout decision → apply → new output
 → validate → preview → change report → risk hooks → deliver**, verifies the source is unchanged, and
@@ -91,9 +94,9 @@ produces a real DOCX + preview + change report under `tests/.out/walking-skeleto
 The features #19–#27 are implemented as **self-contained capability scripts** (`wf-headers.sh`,
 `wf-image.sh`, `wf-table.sh`, `wf-caption.sh`, `wf-crossref.sh`, `wf-toc.sh`, `wf-footnote.sh`,
 `wf-equation.sh`, `wf-template.sh`), each covered by its own fixture-driven acceptance suite and routing
-warnings/downgrades through the shared risk policy. They are **not yet wired into the single-document
-pipeline**; assembling them into the two full workflows (#32 generate-from-content, #33 tidy-existing) is
-the next phase.
+warnings/downgrades through the shared risk policy. They are now **wired into the two full workflows**
+(`#32` generate-from-content and `#33` tidy-existing), which compose rather than reimplement them; the
+walking-skeleton run (#35) is subsumed by those workflows.
 
 ## 3. v0.1 confirmed requirements
 
@@ -257,7 +260,8 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
   `output-naming.sh`, `page-setup.sh`, `standard-styles.sh`, `intake.sh`, `change-report.sh`,
   `render-preview.sh`, `risk-policy.sh`, `toc-cache.sh`, `crossref-cache.sh`, `qa.sh`,
   `skill-discovery.sh`, `headers.sh`, `image.sh`, `table.sh`, `caption.sh`, `crossref.sh`,
-  `toc.sh`, `footnote.sh`, `equation.sh`, `template.sh`, `compat-harness.sh`, `pipeline.sh`;
+  `toc.sh`, `footnote.sh`, `equation.sh`, `template.sh`, `compat-harness.sh`, `generate.sh`,
+  `tidy.sh`, `pipeline.sh`;
   research probes under `tests/probes/`.
 - **QA gate:** `scripts/wf-qa.sh` is the executable Definition of Done (spec §D14) — see
   [`references/workflow/qa-gate.md`](./references/workflow/qa-gate.md).
@@ -290,22 +294,17 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 
 **Still open:**
 
-- **Workflow assembly:** the capabilities are not yet wired into the single-document pipeline; the generate
-  (#32) and tidy (#33) workflows must call them with the right precedence and produce one change report.
-- **Tidy capability:** dangling-style repair and formatting-requirement application remain recorded as
-  unverified by the walking skeleton; built out in #33.
-- **v0.1 acceptance:** an end-to-end acceptance run across the promised capabilities (#34).
+- **v0.1 acceptance (#34):** an end-to-end acceptance run across the promised capabilities, gated by
+  `scripts/wf-qa.sh` and the cross-application checks.
+- **Formatting-requirement overrides without a template:** intake parses them, but there is no style source
+  to apply them against without a template; the pipeline records them as unverified rather than faking it.
 
 ## 8. Next steps
 
-1. Assemble the implemented capabilities into the two full workflows: **`#32` generate-from-content** and
-   **`#33` tidy-existing-DOCX**. Wire `wf-headers.sh`, `wf-image.sh`, `wf-table.sh`, `wf-caption.sh`,
-   `wf-crossref.sh`, `wf-toc.sh`, `wf-footnote.sh`, `wf-equation.sh`, and `wf-template.sh` into
-   `scripts/wf-pipeline.sh` with the D2 precedence and a single change report; replace the pipeline's stale
-   "template adoption is #27 / not implemented" note with a real `wf-template.sh` call.
-2. Run **`#34`** v0.1 acceptance across the promised capabilities, gated by `scripts/wf-qa.sh`.
-3. Grow `SKILL.md` from skeleton to content as the workflows land.
-4. Keep the reference index and this file current; record each ticket in `report/` as an audit trail.
+1. Run **`#34`** v0.1 acceptance across the promised capabilities, gated by `scripts/wf-qa.sh` (and the
+   Word/WPS/LibreOffice compatibility harness where the environment allows).
+2. Grow `SKILL.md` from skeleton to content now that both workflows exist.
+3. Keep the reference index and this file current; record each ticket in `report/` as an audit trail.
 
 > Do **not** start the spec or implement features from this file alone; it is a status
 > entry point, not the spec.
