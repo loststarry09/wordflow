@@ -11,8 +11,9 @@ links; the ADRs hold the full arguments and `references/research/` holds the evi
   **walking skeleton**, the compatibility research wave, the TOC/cross-reference mechanisms, distribution, the
   **executable QA gate (#31)**, and the features (headers/footers + page numbers, images, tables, captions,
   cross-references, TOC, footnotes, equations, template adoption) are all in. The two full **workflows #32
-  (generate-from-content) and #33 (tidy-existing)** are implemented and merged, so the walking skeleton is
-  subsumed; only **v0.1 acceptance #34** remains. See **Implementation status** and §6.
+  (generate-from-content) and #33 (tidy-existing)** are implemented and merged, and **v0.1 acceptance (#34)
+  is complete** — see [`report/2026-10-02-v0.1-acceptance.md`](./report/2026-10-02-v0.1-acceptance.md). See
+  **Implementation status** and §6.
 
 ## Reading order
 
@@ -86,6 +87,7 @@ judgement; every DOCX read/write still goes through OfficeCLI (ADR-0001).
 | Template adoption (look only) | #27 | `scripts/wf-template.sh`, `references/core/template-adoption.md` | `tests/template.sh` |
 | **Generate-from-content workflow** | #32 | `scripts/wf-pipeline.sh` (generate mode), `references/workflow/pipeline.md` | `tests/generate.sh` |
 | **Tidy-existing workflow** | #33 | `scripts/wf-tidy.sh`, `scripts/wf-pipeline.sh` (restyle mode) | `tests/tidy.sh` |
+| **v0.1 acceptance** | #34 | `tests/acceptance.sh`, `report/2026-10-02-v0.1-acceptance.md` | `tests/acceptance.sh` |
 
 The walking skeleton (#35) runs one document through **inspect → layout decision → apply → new output
 → validate → preview → change report → risk hooks → deliver**, verifies the source is unchanged, and
@@ -294,17 +296,20 @@ and WPS via COM (`Word.Application`, `KWPS.Application`), LibreOffice headless.
 
 **Still open:**
 
-- **v0.1 acceptance (#34):** an end-to-end acceptance run across the promised capabilities, gated by
-  `scripts/wf-qa.sh` and the cross-application checks.
+- **v0.1 is accepted** (#34); see [`report/2026-10-02-v0.1-acceptance.md`](./report/2026-10-02-v0.1-acceptance.md).
+  Both workflows, the tiers, and the compatibility gate pass on realistic inputs. The items below are
+  v0.1 limitations, not gaps in the accepted scope.
 - **Formatting-requirement overrides without a template:** intake parses them, but there is no style source
   to apply them against without a template; the pipeline records them as unverified rather than faking it.
+- **Automated restructuring** is out of v0.1; a confirmed request is a reported downgrade (spec D5.5).
 
 ## 8. Next steps
 
-1. Run **`#34`** v0.1 acceptance across the promised capabilities, gated by `scripts/wf-qa.sh` (and the
-   Word/WPS/LibreOffice compatibility harness where the environment allows).
-2. Grow `SKILL.md` from skeleton to content now that both workflows exist.
-3. Keep the reference index and this file current; record each ticket in `report/` as an audit trail.
+1. Grow `SKILL.md` from skeleton to content now that both workflows exist, so the agent-facing entry point
+   teaches the full workflow surface.
+2. Post-v0.1 candidates: applying formatting requirements without a template; automated restructuring
+   behind per-item confirmation; broader render-fidelity checks.
+3. Keep the reference index and this file current; record each change in `report/` as an audit trail.
 
 > Do **not** start the spec or implement features from this file alone; it is a status
 > entry point, not the spec.
