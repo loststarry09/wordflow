@@ -157,6 +157,11 @@ TPL_PATH=''; REQ_PATH=''
 [[ -n "$TPL" ]] && TPL_PATH="$(abs "$TPL")"
 [[ -n "$REQ" ]] && REQ_PATH="$(abs "$REQ")"
 
+# shellcheck source=scripts/lib/source-protection.sh
+source "$ROOT/scripts/lib/source-protection.sh"
+wf_guard_destination --plan "$PLAN" "$SRC_PATH" "$TPL_PATH" "$REQ_PATH"
+wf_guard_destination --output "$OUT" "$SRC_PATH" "$TPL_PATH" "$REQ_PATH"
+
 # --plan must never point at an input document.
 if [[ -n "$PLAN" ]]; then
   PLAN_ABS="$(abs "$PLAN")"

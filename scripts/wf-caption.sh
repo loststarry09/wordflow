@@ -113,6 +113,10 @@ TMO="timeout 60"
 abs() { local d; d="$(cd "$(dirname "$1")" && pwd)"; printf '%s/%s\n' "$d" "$(basename "$1")"; }
 src_abs="$(abs "$SRC")"
 out_abs="$(abs "$OUT")"
+# shellcheck source=scripts/lib/source-protection.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/source-protection.sh"
+wf_guard_destination --out "$OUT" "$SRC"
+wf_guard_destination --report "$REPORT_OUT" "$SRC" "$OUT"
 
 [[ "$src_abs" != "$out_abs" ]] || { echo "--out must differ from the source (ADR-0003: never modify the source)" >&2; exit 2; }
 

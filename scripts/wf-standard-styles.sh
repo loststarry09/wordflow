@@ -79,6 +79,9 @@ TMO="timeout 60"
 abs() { local d; d="$(cd "$(dirname "$1")" && pwd)"; printf '%s/%s\n' "$d" "$(basename "$1")"; }
 src_abs="$(abs "$SRC")"
 out_abs="$(abs "$OUT")"
+# shellcheck source=scripts/lib/source-protection.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/source-protection.sh"
+wf_guard_destination --out "$OUT" "$SRC"
 
 [[ "$src_abs" != "$out_abs" ]] || { echo "--out must differ from the source (ADR-0003: never modify the source)" >&2; exit 2; }
 
@@ -113,11 +116,21 @@ trap cleanup EXIT
 $TMO officecli close "$out_abs" >/dev/null 2>&1 || true
 cp -f "$src_abs" "$out_abs"
 
+existing_styles="$($TMO officecli get "$out_abs" /styles --json)"
+jq -e '.success == true' <<<"$existing_styles" >/dev/null || { echo "could not read existing styles" >&2; exit 1; }
+
 add_style() { # add_style <styleId> <name> <type> <customStyle> <props...>
   local id="$1" name="$2" type="$3" custom="$4"; shift 4
-  $TMO officecli add "$out_abs" /styles --type style \
-    --prop styleId="$id" --prop name="$name" --prop type="$type" \
-    --prop customStyle="$custom" "$@" >/dev/null
+  if jq -e --arg id "$id" \
+      'any(.data.results[].children[]?; .type=="style" and .format.styleId==$id)' \
+      <<<"$existing_styles" >/dev/null; then
+    # Keep the style identity and its references; only update standard props.
+    $TMO officecli set "$out_abs" "/styles/$id" --prop name="$name" "$@" >/dev/null
+  else
+    $TMO officecli add "$out_abs" /styles --type style \
+      --prop styleId="$id" --prop name="$name" --prop type="$type" \
+      --prop customStyle="$custom" "$@" >/dev/null
+  fi
 }
 
 # Normal is the document's default style (`w:default`). `set` preserves that

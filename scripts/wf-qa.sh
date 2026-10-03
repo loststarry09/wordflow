@@ -60,7 +60,7 @@ Options:
   --preview <json|file>      Render-preview JSON (or a file containing it).
   --repro <docx>             A second run's output, to check reproducibility.
   --apps <list>              Applications for the repair-free gate
-                             (default: word,wps,libreoffice).
+                             (default: word,wps,libreoffice; all requested apps required).
   --no-compat                Skip the repair-free-open gate.
   --json                     Emit a machine-readable result object.
   -h, --help                 Show this help.
@@ -183,15 +183,56 @@ fi
 # --- 6. every limited construct is reported (no silent downgrade) -----------
 # Codes come from the risk policy (#30) — never hardcoded here — so the trigger
 # table stays defined once (see references/workflow/risk-policy.md).
-risk_code() { "$RISK" decide --trigger "$1" --json 2>/dev/null | jq -r '.code // ""' 2>/dev/null || true; }
+risk_code() { "$RISK" decide --trigger "$1" "${@:2}" --json 2>/dev/null | jq -r '.code // ""' 2>/dev/null || true; }
 detected=()
 anchored="$($TMO officecli query "$out_abs" 'picture[anchor=true]' --json 2>/dev/null | jq -r '.data.matches // 0' 2>/dev/null || echo 0)"
 if [[ "$anchored" =~ ^[0-9]+$ ]] && (( anchored > 0 )); then detected+=("$(risk_code floating-image)"); fi
-nested="$($TMO officecli query "$out_abs" 'table table' --json 2>/dev/null | jq -r '.data.matches // 0' 2>/dev/null || echo 0)"
+# The semantic table selector omits nested tables in the verified OfficeCLI.
+# tblPr gives every actual table path; read each table without a depth cutoff.
+table_paths="$($TMO officecli query "$out_abs" tblPr --json 2>/dev/null \
+  | jq -r '.data.results[]? | .path | select(contains("/tbl[")) | sub("/tblPr\\[[0-9]+\\]$"; "")' 2>/dev/null || true)"
+tables_json="$(while IFS= read -r table_path; do
+  [[ -n "$table_path" ]] || continue
+  $TMO officecli get "$out_abs" "$table_path" --json 2>/dev/null \
+    | jq -c '.data.results[]? | select(.type=="table")'
+done <<<"$table_paths" | jq -sc '.')"
+# A promoted nested construction needs the measured portable subset at every
+# nesting level; do not invent a warning for the fully supported construction.
+nested="$(jq -r '
+  def portable:
+    try (.format as $f
+      | $f.layout=="fixed"
+        and ($f.colWidths | length)>0
+        and (($f.width | tonumber)==($f.colWidths | gsub("dxa";"") | split(",") | map(tonumber) | add))
+        and (($f["border.top"] // "") | length)>0) catch false;
+  . as $tables
+  | [$tables[] | select(((.path // "") | split("/tbl[") | length)>2)
+     | . as $nested
+     | select(any($tables[];
+         . as $table | ($nested.path==$table.path or ($nested.path | startswith($table.path+"/")))
+         and (portable | not)))] | length
+' <<<"$tables_json" 2>/dev/null || echo 0)"
 if [[ "$nested" =~ ^[0-9]+$ ]] && (( nested > 0 )); then detected+=("$(risk_code nested-table)"); fi
 sec_json="$($TMO officecli query "$out_abs" section --json 2>/dev/null || echo '{}')"
 restart="$(jq -r '[.data.results[]? | select(.format.pageStart != null)] | length' <<<"$sec_json" 2>/dev/null || echo 0)"
 if [[ "$restart" =~ ^[0-9]+$ ]] && (( restart > 0 )); then detected+=("$(risk_code page-number-restart)"); fi
+columns="$(jq -r '[.data.results[]? | select(((.format.columns // 1) | tonumber)>1)] | length' <<<"$sec_json" 2>/dev/null || echo 0)"
+if [[ "$columns" =~ ^[0-9]+$ ]] && (( columns > 0 )); then detected+=("$(risk_code columns)"); fi
+pageref="$(jq -r '[.data.results[]? | select((.format.instruction // "") | test("^\\s*PAGEREF(\\s|$)"; "i"))] | length' <<<"$field_json" 2>/dev/null || echo 0)"
+if [[ "$pageref" =~ ^[0-9]+$ ]] && (( pageref > 0 )); then
+  detected+=("$(risk_code unverifiable-field --resolution state)")
+fi
+
+# Construct-specific equation risks: a bar survives in the read-back formula;
+# parser-aligned matrices survive as the right/left pair of column justifications.
+# Faithful matrices, true eqArr and promoted first/odd/even headers need no warning.
+equations="$($TMO officecli query "$out_abs" equation --json 2>/dev/null || echo '{}')"
+pipe_count="$(jq -r '[.data.results[]? | select((.text // "") | contains("|"))] | length' <<<"$equations" 2>/dev/null || echo 0)"
+justifications="$($TMO officecli query "$out_abs" mcJc --json 2>/dev/null || echo '{}')"
+aligned="$(jq -r '[.data.results[]?] | group_by(.path | split("/mc[")[0]) | any(.[]; [.[].format.val]==["right","left"])' <<<"$justifications" 2>/dev/null || echo false)"
+if [[ "$aligned" == true ]] || { [[ "$pipe_count" =~ ^[0-9]+$ ]] && ((pipe_count > 0)); }; then
+  detected+=("$(risk_code complex-equation)")
+fi
 
 if (( ${#detected[@]} == 0 )); then
   record constructs-reported skip "no limited construction detected in the output"
@@ -234,11 +275,28 @@ if [[ -n "$PLAN" ]]; then
   src_ok=1; [[ "$unchanged" == "true" && -n "$sb" && "$sb" == "$sa" ]] || src_ok=0
   if [[ -n "$SRC" && "$(sha_of "$SRC")" != "$sb" ]]; then src_ok=0; fi
   check source-unchanged "the source bytes are unchanged" "$src_ok" "plan source.unchanged=$unchanged"
-  new_ok=1; [[ -n "$plan_out" && "$plan_out" != "$plan_src" ]] || new_ok=0
-  check output-is-new-file "the output is a distinct new file" "$new_ok" "output: ${plan_out:-<none>}"
   base="$(basename "$plan_out")"
   name_ok=0; [[ "$base" =~ ^.+-排版( \([0-9]+\))?\.docx$ ]] && name_ok=1
   check collision-safe-name "output name is -排版 / -排版 (N)" "$name_ok" "name: ${base:-<none>}"
+fi
+
+# Inspect filesystem identity, including the real delivered file. Plan strings
+# alone cannot prove ADR-0003, and --source also applies without a job plan.
+if [[ -n "$PLAN" || -n "$SRC" ]]; then
+  # shellcheck source=scripts/lib/source-protection.sh
+  source "$SCRIPT_DIR/lib/source-protection.sh"
+  new_ok=1
+  if [[ -n "$PLAN" ]]; then
+    [[ -n "$plan_src" && -f "$plan_src" && -n "$plan_out" ]] || new_ok=0
+    wf_paths_alias "$OUT" "$plan_out" || new_ok=0
+  fi
+  for source_path in "${plan_src:-}" "$SRC"; do
+    [[ -n "$source_path" ]] || continue
+    if wf_paths_alias "$OUT" "$source_path" || wf_paths_alias "${plan_out:-}" "$source_path"; then
+      new_ok=0
+    fi
+  done
+  check output-is-new-file "the output is a distinct new file" "$new_ok" "output: $OUT"
 fi
 
 # --- 9. reproducibility -----------------------------------------------------
@@ -258,19 +316,22 @@ if (( COMPAT )); then
   hdir="$(mktemp -d "${TMPDIR:-/tmp}/wf-qa-compat.XXXXXX")"
   hj="$(  $TMO "$HARNESS" "$out_abs" --apps "$APPS" --out "$hdir" --timeout 90 --json 2>/dev/null || echo '{}')"
   rm -rf "$hdir"
-  any_checked=0; compat_fail=()
-  while IFS=$'\t' read -r app status owr; do
-    [[ -n "$app" ]] || continue
-    if [[ "$status" == "unavailable" ]]; then continue; fi
-    any_checked=1
-    [[ "$owr" == "true" ]] || compat_fail+=("$app")
-  done < <(jq -r '.records[]? | [.app, (.status // ""), ((.opens_without_repair // false) | tostring)] | @tsv' <<<"$hj" 2>/dev/null || true)
+  compat_fail=()
+  IFS=',' read -r -a requested_apps <<<"$APPS"
+  (( ${#requested_apps[@]} > 0 )) || compat_fail+=("<empty application list>")
+  for app in "${requested_apps[@]}"; do
+    app="${app//[[:space:]]/}"
+    if ! jq -e --arg app "$app" '
+        [.records[]? | select(.app==$app)]
+        | length==1 and .[0].status=="ok" and .[0].opens_without_repair==true
+      ' <<<"$hj" >/dev/null 2>&1; then
+      compat_fail+=("${app:-<empty application>}")
+    fi
+  done
   if (( ${#compat_fail[@]} > 0 )); then
-    record opens-without-repair fail "repair prompt in: ${compat_fail[*]}"
-  elif (( any_checked )); then
-    record opens-without-repair pass "repair-free in the available app(s): $APPS"
+    record opens-without-repair fail "required application unavailable or not repair-free: ${compat_fail[*]}"
   else
-    record opens-without-repair skip "no application driver available"
+    record opens-without-repair pass "repair-free in every requested app: $APPS"
   fi
 else
   record opens-without-repair skip "compat gate disabled (--no-compat)"

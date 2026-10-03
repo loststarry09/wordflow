@@ -108,6 +108,10 @@ abs() { local d; d="$(cd "$(dirname "$1")" && pwd)"; printf '%s/%s\n' "$d" "$(ba
 src_abs="$(abs "$SRC")"
 tpl_abs="$(abs "$TPL")"
 out_abs="$(abs "$OUT")"
+# shellcheck source=scripts/lib/source-protection.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/source-protection.sh"
+wf_guard_destination --out "$OUT" "$SRC" "$TPL"
+wf_guard_destination --report "$REPORT" "$SRC" "$OUT" "$TPL"
 
 [[ "$src_abs" != "$out_abs" ]] || { echo "--out must differ from the source (ADR-0003: never modify the source)" >&2; exit 2; }
 [[ "$tpl_abs" != "$out_abs" ]] || { echo "--out must differ from the template (never modify the template)" >&2; exit 2; }

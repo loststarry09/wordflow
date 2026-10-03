@@ -23,7 +23,7 @@ It composes the existing capabilities and reimplements none of them:
 
 Checks whose inputs are absent are **skipped**, not failed — but `constructs-reported` **fails** when
 a limited construction is present and no `--report` is supplied, because silence cannot be proven
-safe.
+safe. Requested compatibility applications are also required; unavailable drivers fail.
 
 ## Usage
 
@@ -38,14 +38,15 @@ Exit codes: `0` all applicable checks pass · `1` one or more failed · `2` usag
 `--plan` is the job plan from `scripts/wf-intake.sh` (#15); `--report` the change report from
 `scripts/wf-change-report.sh` (#28); `--preview` the JSON from `scripts/wf-render-preview.sh` (#29);
 `--repro` a second run's output. The compatibility gate runs the #2 harness over the output for each
-requested application; a driver that is not installed is reported `skip`, never a fake pass.
+requested application. Every requested application is required: a driver that is unavailable,
+a missing record, or a non-repair-free open fails the gate. `--no-compat` explicitly skips this check.
 
 ## The DoD, in gate terms
 
 A job is done when `wf-qa.sh` reports `ok: true` — schema valid, no dangling style, no placeholder
 cache, a number-free TOC, a valid change report that carries every limited construction, a preview
 of the delivered output, an unchanged source, a new collision-safe file, reproducible output, and a
-repair-free open in the available applications. Structural changes additionally require the user's
+repair-free open in every requested application. Structural changes additionally require the user's
 per-item confirmation, which is a workflow obligation the gate cannot infer.
 
 See `spec docs/spec/v0.1.md` §D14 and `tests/qa.sh`.

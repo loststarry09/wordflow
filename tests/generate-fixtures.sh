@@ -216,8 +216,9 @@ finish "$f"
 
 f="$FIX/tables/nested-table.docx"; new "$f" en-US
 add "$f" /body --type paragraph --prop text="Outer fixed table; a nested fixed table sits inside its middle-left cell:"
-add "$f" /body --type table --prop data="Outer A,Outer B;nested cell,outer right;outer bottom 1,outer bottom 2" --prop layout=fixed --prop colWidths=3402,3402 --prop width=12cm --prop border.all="single;8;000000"
-add "$f" /body/tbl[1]/tr[2]/tc[1] --type table --prop data="Inner 1,Inner 2;Inner 3,Inner 4" --prop layout=fixed --prop colWidths=1418,1417 --prop width=5cm --prop border.all="single;8;C00000"
+# Use exact grid sums: centimetre conversion rounds 12cm down to 6803 dxa.
+add "$f" /body --type table --prop data="Outer A,Outer B;nested cell,outer right;outer bottom 1,outer bottom 2" --prop layout=fixed --prop colWidths=3402,3402 --prop width=6804 --prop border.all="single;8;000000"
+add "$f" /body/tbl[1]/tr[2]/tc[1] --type table --prop data="Inner 1,Inner 2;Inner 3,Inner 4" --prop layout=fixed --prop colWidths=1418,1417 --prop width=2835 --prop border.all="single;8;C00000"
 finish "$f"
 
 # Merged-cell table (#21). OfficeCLI exposes the merge semantics as native cell

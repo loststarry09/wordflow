@@ -54,8 +54,6 @@ FIXTURES="$ROOT/tests/fixtures"
 DEFAULT_TMO=120
 DEFAULT_MAX_FIELDS=200
 DEFAULT_PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
-TASKLIST_BIN=/mnt/c/Windows/System32/tasklist.exe
-TASKKILL_BIN=/mnt/c/Windows/System32/taskkill.exe
 
 usage() {
   cat <<'EOF'
@@ -105,7 +103,7 @@ done
 
 PS_BIN="${WF_POWERSHELL:-$DEFAULT_PS}"
 HAVE_WINDOWS=0
-[[ -x "$PS_BIN" && -x "$TASKLIST_BIN" && -x "$TASKKILL_BIN" ]] && HAVE_WINDOWS=1
+[[ -x "$PS_BIN" ]] && HAVE_WINDOWS=1
 HAVE_SOFFICE=0
 command -v soffice >/dev/null && HAVE_SOFFICE=1
 HAVE_PDFTOPPM=0
@@ -210,9 +208,25 @@ if ((${#DOCS[@]} == 0)); then
   exit 1
 fi
 
+rel() { local p="$1"; case "$p" in "$ROOT"/*) printf '%s\n' "${p#"$ROOT"/}" ;; *) printf '%s\n' "$p" ;; esac; }
+
 # --- output + staging ------------------------------------------------------
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 OUT="${OUT:-$ROOT/tests/.out/compat/$RUN_ID}"
+# shellcheck source=scripts/lib/source-protection.sh
+source "$ROOT/scripts/lib/source-protection.sh"
+wf_guard_destination --out "$OUT" "${DOCS[@]}" "$LIST_FILE"
+wf_guard_destination 'compat result' "$OUT/result.json" "${DOCS[@]}" "$LIST_FILE"
+for src in "${DOCS[@]}"; do
+  rel_src="$(rel "$src")"
+  name="$(printf '%s' "$rel_src" | sed 's#[/.]#_#g')"
+  wf_guard_destination 'compat work copy' "$OUT/work/$(basename "$src")" "${DOCS[@]}" "$LIST_FILE"
+  for artifact in officecli.png word.pdf word.png wps.pdf wps.png libreoffice.pdf libreoffice.png; do
+    wf_guard_destination 'compat artifact' "$OUT/$name/$artifact" "${DOCS[@]}" "$LIST_FILE"
+  done
+  # soffice names its intermediate PDF after the work document.
+  wf_guard_destination 'compat PDF' "$OUT/$name/$(basename "${src%.docx}").pdf" "${DOCS[@]}" "$LIST_FILE"
+done
 mkdir -p "$OUT"
 # Absolutise: LibreOffice's -env:UserInstallation needs a valid file:// URI, and a
 # relative path would parse as a URI host and hang the conversion.
@@ -221,7 +235,9 @@ mkdir -p "$OUT/work"
 
 STAGE_WSL=""
 STAGE_WIN=""
-if ((HAVE_WINDOWS)); then
+USE_COM=0
+for app in "${_apps[@]}"; do [[ "$app" != word && "$app" != wps ]] || USE_COM=1; done
+if ((HAVE_WINDOWS && USE_COM)); then
   STAGE_WSL="/mnt/c/temp/wordflow-compat/$RUN_ID"
   if ! mkdir -p "$STAGE_WSL" 2>/dev/null; then
     STAGE_WSL=""; HAVE_WINDOWS=0
@@ -231,41 +247,18 @@ if ((HAVE_WINDOWS)); then
   fi
 fi
 
-# --- process bookkeeping (no orphan locks) ---------------------------------
-win_pids() { # <image name>
-  timeout 20 "$TASKLIST_BIN" /FI "IMAGENAME eq $1" /FO CSV /NH 2>/dev/null \
-    | sed -n 's/^"[^"]*","\([0-9][0-9]*\)".*/\1/p' | sort -u
-}
-BASELINE_WORD=""; BASELINE_WPS=""; BASELINE_PS=""
-if ((HAVE_WINDOWS)); then
-  BASELINE_WORD="$(win_pids WINWORD.EXE || true)"
-  BASELINE_WPS="$(win_pids wps.exe || true)"
-  BASELINE_PS="$(win_pids powershell.exe || true)"
-fi
-baseline_for() {
-  case "$1" in
-    WINWORD.EXE) printf '%s' "$BASELINE_WORD" ;;
-    wps.exe)     printf '%s' "$BASELINE_WPS" ;;
-    powershell.exe) printf '%s' "$BASELINE_PS" ;;
-    *)           printf '' ;;
-  esac
-}
-# Force-kill any process we spawned and wait until none remain, so the run
-# leaves no lock. PIDs present before the run (the user's own open apps) are
-# never touched.
-kill_new_wait() { # <image> <baseline newline-sep>
-  local img="$1" base="$2" pid remaining
-  for _ in 1 2 3 4 5 6 7 8; do
-    remaining=""
-    while IFS= read -r pid; do
-      [[ -z "$pid" ]] && continue
-      grep -qx "$pid" <<<"$base" || remaining="$remaining $pid"
-    done < <(win_pids "$img" || true)
-    [[ -z "$remaining" ]] && return 0
-    for pid in $remaining; do timeout 20 "$TASKKILL_BIN" /PID "$pid" /F >/dev/null 2>&1 || true; done
-    sleep 1
+# --- process bookkeeping (only explicit, creation-time-pinned owners) -------
+cleanup_owners() {
+  local dir win_dir
+  [[ -n "$STAGE_WSL" ]] || return 0
+  for dir in "$STAGE_WSL"/owners-*; do
+    [[ -d "$dir" ]] || continue
+    win_dir="$STAGE_WIN\\$(basename "$dir")"
+    timeout 30 "$PS_BIN" -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File "$STAGE_WIN\\compat-processes.ps1" \
+      -Mode Cleanup -OwnerDir "$win_dir" >/dev/null 2>&1 || true
+    mkdir -p "$OUT/processes"
+    cp -f "$dir"/*.json "$OUT/processes/" 2>/dev/null || true
   done
-  return 0
 }
 
 CLEANED=0
@@ -277,18 +270,13 @@ cleanup() {
     w="$OUT/work/$(basename "$d")"
     if [[ -e "$w" ]]; then timeout 60 officecli close "$w" >/dev/null 2>&1 || true; fi
   done
-  if ((HAVE_WINDOWS)); then
-    kill_new_wait WINWORD.EXE "$BASELINE_WORD"
-    kill_new_wait wps.exe "$BASELINE_WPS"
-    kill_new_wait powershell.exe "$BASELINE_PS"
-  fi
+  cleanup_owners
   if ((KEEP_STAGING == 0)) && [[ -n "$STAGE_WSL" ]]; then rm -rf "$STAGE_WSL" 2>/dev/null || true; fi
   return 0
 }
 trap cleanup EXIT
 
 # --- helpers ---------------------------------------------------------------
-rel() { local p="$1"; case "$p" in "$ROOT"/*) printf '%s\n' "${p#"$ROOT"/}" ;; *) printf '%s\n' "$p" ;; esac; }
 pdf_size() { stat -c '%s' "$1" 2>/dev/null || printf 'null'; }
 
 check_schema() { # <abs> -> true|false
@@ -362,9 +350,12 @@ param(
   [Parameter(Mandatory=$true)][string]$ProgId,
   [Parameter(Mandatory=$true)][string]$Path,
   [Parameter(Mandatory=$true)][string]$Out,
+  [Parameter(Mandatory=$true)][string]$OwnerDir,
   [int]$MaxFields = 200
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'compat-processes.ps1') -Mode Library -OwnerDir $OwnerDir -ProgId $ProgId -Path $Path -Out $Out -MaxFields $MaxFields
+Save-Owner (Get-Process -Id $PID) 'worker' 'driver-script' $PSCommandPath
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 function B64([string]$s) { if ([string]::IsNullOrEmpty($s)) { return $null }; return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($s)) }
 
@@ -393,15 +384,23 @@ $r = [ordered]@{
   toc_count = 0; toc_text = $null;
   pdf = $false; pdf_error_b64 = $null
 }
-$app = $null
+$app = $null; $doc = $null; $owned = $false
+$image=if ($ProgId -eq 'Word.Application') { 'WINWORD' } else { 'wps' }
+$before=@(Get-Process -Name $image -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+$activation=[datetime]::UtcNow
 try {
   $app = New-Object -ComObject $ProgId
+  if ($app.Documents.Count -ne 0) { throw 'COM instance already has documents; ownership refused' }
+  # A hidden application without a document has no HWND. Open only our read-only
+  # document to obtain the exact window identity; close it even if ownership fails.
+  $doc = $app.Documents.Open($Path, $false, $true)
+  Own-ComApplication $app $doc $image $before $activation
+  $owned = $true
   $r.engine_started = $true
   try { $app.Visible = $false } catch {}
   try { $app.DisplayAlerts = 0 } catch {}
   try { $app.AutomationSecurity = 1 } catch {}
   try { $r.version = [string]$app.Version } catch {}
-  $doc = $app.Documents.Open($Path, $false, $true)   # ConfirmConversions=false, ReadOnly=true
   $r.opened = $true
   Add-FieldRange $doc.Content 'body' $null 'main'
   try {
@@ -427,14 +426,14 @@ try {
     for ($i = 0; $i -lt 40 -and -not (Test-Path $Out); $i++) { Start-Sleep -Milliseconds 250 }
     $r.pdf = (Test-Path $Out)
   } catch { $r.pdf_error_b64 = B64 $_.Exception.Message }
-  try { $doc.Close($false) } catch {}
 } catch {
   if (-not $r.engine_started) { $r.error_stage = 'engine' } else { $r.error_stage = 'open' }
   $r.error_b64 = B64 $_.Exception.Message
   try { $r.error_code = [int64]$_.Exception.HResult } catch {}
 } finally {
   if ($app -ne $null) {
-    try { $app.Quit() } catch {}
+    if ($doc -ne $null) { try { $doc.Close($false) } catch {} }
+    if ($owned) { try { $app.Quit() } catch {} }
     try { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($app) | Out-Null } catch {}
   }
 }
@@ -445,16 +444,17 @@ PS1
 # run a COM application for one document. echoes compact JSON:
 # {status, owr, detail, version, pdf_source, pdf_error, pages, app_field_cache}
 com_app() { # <progid> <image> <win_source> <win_pdf> <wsl_pdf> <max_fields>
-  local prog="$1" img="$2" wsrc="$3" wpdf="$4" wsl_pdf="$5" maxf="$6" out rc
-  if out="$(timeout "$TMO" "$PS_BIN" -NoProfile -ExecutionPolicy Bypass -File "$STAGE_WIN\\probe.ps1" \
+  local prog="$1" img="$2" wsrc="$3" wpdf="$4" wsl_pdf="$5" maxf="$6" out rc owners
+  owners="owners-$img-$BASHPID"
+  mkdir -p "$STAGE_WSL/$owners"
+  if out="$(timeout "$((TMO + 45))" "$PS_BIN" -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File "$STAGE_WIN\\compat-processes.ps1" \
+        -Mode Supervise -Probe "$STAGE_WIN\\probe.ps1" -OwnerDir "$STAGE_WIN\\$owners" -Timeout "$TMO" \
         -ProgId "$prog" -Path "$wsrc" -Out "$wpdf" -MaxFields "$maxf" 2>/dev/null)"; then
     rc=0
   else
     rc=$?
   fi
-  # Reap anything this call spawned before moving to the next application, so a
-  # lingering hidden process cannot hold a lock on the staged file.
-  kill_new_wait "$img" "$(baseline_for "$img")"
+  cleanup_owners
 
   out="$(printf '%s' "$out" | tr -d '\r')"
   if ((rc == 124 || rc == 137)); then
@@ -541,7 +541,10 @@ fi
 OCLI_VERSION="$(officecli --version 2>/dev/null | head -1 || true)"
 
 # --- run -------------------------------------------------------------------
-if ((HAVE_WINDOWS)); then write_probe_ps; fi
+if [[ -n "$STAGE_WSL" ]]; then
+  cp "$ROOT/scripts/lib/compat-processes.ps1" "$STAGE_WSL/compat-processes.ps1"
+  write_probe_ps
+fi
 
 RECORDS=()
 doc_count=0
@@ -573,7 +576,7 @@ for src in "${DOCS[@]}"; do
 
   # Windows staging copy for COM applications
   win_src=""
-  if ((HAVE_WINDOWS)); then
+  if [[ -n "$STAGE_WSL" ]]; then
     cp -f "$src" "$STAGE_WSL/$name"
     win_src="$STAGE_WIN\\$name"
   fi

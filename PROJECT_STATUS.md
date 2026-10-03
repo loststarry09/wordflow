@@ -5,12 +5,14 @@ decided, what is verified, and where everything lives. It summarises and links; 
 hold the arguments, `docs/spec/v0.1.md` holds the contract, and `references/research/` holds
 the evidence.
 
-- **Status:** **v0.1.0 — COMPLETE & tagged** (2026-10-02). No open issues.
+- **Status:** **v0.1.1 — COMPLETE** (2026-10-03). Correctness / hardening release;
+  no new features or contract expansion. The v0.1.0 tag is preserved.
 - **Verified tooling:** OfficeCLI `1.0.153` (baseline `1.0.152`); Microsoft Word `16.0`;
   WPS Writer `12.0`; LibreOffice `24.2.7.2`.
 - **Verified by:** `tests/acceptance.sh` 51/51; compatibility gate 12/12 records repair-free;
-  `tests/validate-fixtures.sh` 65/65 over 32 fixtures; **1,495 checks across 27 suites, all
-  passing**; `shellcheck -S warning` clean.
+  required compat 42/42 with 0 skip; `tests/validate-fixtures.sh` 73/73 over 32 fixtures;
+  **2,464 checks across 37 suites, all passing**; `shellcheck -S warning` clean over
+  63 shell sources. Release verification: [final record](./report/2026-10-03-v0.1.1-release.md).
 
 ## Reading order
 
@@ -24,6 +26,9 @@ Do **not** read `report/` by default: it is a narrative audit trail — open
 [`report/v0.1-development-summary.md`](./report/v0.1-development-summary.md) for the v0.1
 story or [`report/2026-10-02-v0.1-acceptance.md`](./report/2026-10-02-v0.1-acceptance.md) for
 the acceptance evidence.
+For v0.1.1 correctness fixes and final gates, see
+[`report/2026-10-03-v0.1.1-release.md`](./report/2026-10-03-v0.1.1-release.md) and the
+[release notes](./report/v0.1.1-release-notes.md).
 
 ---
 
@@ -144,7 +149,14 @@ and [`references/research/docx-feature-portability.md`](./references/research/do
   report, every limited construction reported, preview covers the output, source unchanged,
   output is a new collision-safe file, reproducible, opens repair-free. See
   [`references/workflow/qa-gate.md`](./references/workflow/qa-gate.md).
-- **Final run (2026-10-02, v0.1.0):** `acceptance` **51**, `validate-fixtures` **65** (32
+- **v0.1.1 hardening (2026-10-03):** source/output/report alias protection, actual table
+  width read-back, standard-style idempotency, isolated REF field cleanup, complete limited
+  construct reporting, real preview artifact checks, required three-application compatibility,
+  owned-process cleanup, concurrent TOC staging, and the corrected nested-table fixture.
+  Full regression: **37 suites / 2,464 checks**, all green; required compat **42/42,
+  0 skip**. Two rounds and final gate evidence are linked from the
+  [release record](./report/2026-10-03-v0.1.1-release.md).
+- **Historical run (2026-10-02, v0.1.0):** `acceptance` **51**, `validate-fixtures` **65** (32
   fixtures), `compat-harness` **42/42** (real Word/WPS/LibreOffice), `pipeline` **63**,
   `generate` **73**, `tidy` **54**, `qa` **33**, `skill-discovery` **20**, plus every unit and
   feature suite — **1,495 checks across 27 suites, all green**; `shellcheck -S warning` clean.

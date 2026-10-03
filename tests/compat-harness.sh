@@ -15,6 +15,7 @@
 #
 # Requirements: officecli >= 1.0.152, jq, sha256sum on PATH.
 # Usage: tests/compat-harness.sh
+# Set WF_REQUIRE_COMPAT=1 for a release gate: unavailable Word/WPS must fail.
 #
 set -uo pipefail
 
@@ -141,7 +142,11 @@ if [[ -x "$PS_BIN" ]]; then
   for app in word wps; do
     status="$(jq -r --arg a "$app" '.records[]|select(.app==$a)|.status' <<<"$json")"
     if [[ "$status" == "unavailable" ]]; then
-      report_skip "$app: COM engine available" "engine did not start (app not installed here)"
+      if [[ "${WF_REQUIRE_COMPAT:-0}" == 1 ]]; then
+        report_fail "$app: required COM engine available" "engine unavailable"
+      else
+        report_skip "$app: COM engine available" "engine did not start (app not installed here)"
+      fi
       continue
     fi
     assert_eq "$app: status ok" "$status" "ok"
@@ -168,7 +173,11 @@ if [[ -x "$PS_BIN" ]]; then
   done
   assert_eq "word/wps: source unchanged" "$tbefore" "$tafter"
 else
-  report_skip "word/wps over COM" "Windows interop not reachable ($PS_BIN)"
+  if [[ "${WF_REQUIRE_COMPAT:-0}" == 1 ]]; then
+    report_fail "word/wps over COM required" "Windows interop not reachable ($PS_BIN)"
+  else
+    report_skip "word/wps over COM" "Windows interop not reachable ($PS_BIN)"
+  fi
 fi
 
 # ---------------------------------------------------------------------------

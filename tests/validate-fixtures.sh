@@ -69,6 +69,27 @@ while IFS= read -r -d '' f; do
     fi
   fi
 
+  # A schema-valid nested table is portable only with exact physical widths,
+  # explicit grid, fixed layout, and direct borders at both table levels.
+  if [[ "$rel" == "tables/nested-table.docx" ]]; then
+    for table in /body/tbl[1] /body/tbl[1]/tr[2]/tc[1]/tbl[1]; do
+      format="$($TMO officecli get "$f" "$table" --json | jq '.data.results[0].format')"
+      for property in width grid layout borders; do
+        case "$property" in
+          width) predicate='(.colWidths|split(",")|map(rtrimstr("dxa")|tonumber)|add)==(.width|tonumber)' ;;
+          grid) predicate='(.colWidths|split(",")) as $c | ($c|length)==2 and all($c[];test("^[0-9]+(dxa)?$") and (rtrimstr("dxa")|tonumber>0))' ;;
+          layout) predicate='.layout=="fixed"' ;;
+          borders) predicate='has("border.top") and has("border.bottom") and has("border.left") and has("border.right")' ;;
+        esac
+        if jq -e "$predicate" >/dev/null 2>&1 <<<"$format"; then
+          report_ok "portable $rel $table $property"
+        else
+          report_fail "portable $rel $table $property" 'strict portable invariant failed'
+        fi
+      done
+    done
+  fi
+
   officecli close "$f" >/dev/null 2>&1 || true
 done < <(find "$FIX" -name '*.docx' -print0 | sort -z)
 

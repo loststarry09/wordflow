@@ -113,6 +113,11 @@ else
   DIR_TARGET="$(dirname -- "$OUTPUT_ABS")"
 fi
 
+# shellcheck source=scripts/lib/source-protection.sh
+source "$SCRIPT_DIR/lib/source-protection.sh"
+wf_guard_destination --report "$REPORT" "$OUTPUT_ABS"
+wf_guard_destination --out "$DIR_TARGET" "$OUTPUT_ABS" "$REPORT"
+
 stem="$(basename -- "$OUTPUT_ABS")"
 stem="${stem%.*}"
 
@@ -194,12 +199,16 @@ declare -a artifacts=()
 
 if [[ "$FORMAT" == pdf ]]; then
   dest="$OUT_DIR_ABS/$stem-preview.pdf"
+  wf_guard_destination "preview artifact" "$dest" "$OUTPUT_ABS" "$REPORT"
   mv -f -- "$pdf" "$dest" || die_op "failed to write $dest"
   artifacts=("$dest")
   method_json='"soffice"'
 else
   # Clear stale pages from a previous, longer render so the artifact set is
   # exactly this document's pages.
+  for frame in "$OUT_DIR_ABS/$stem-preview-"*.png; do
+    wf_guard_destination "preview artifact" "$frame" "$OUTPUT_ABS" "$REPORT"
+  done
   rm -f -- "$OUT_DIR_ABS/$stem-preview-"*.png
   prefix="$OUT_DIR_ABS/$stem-preview"
   timeout "${WF_SOFFICE_TIMEOUT:-$DEFAULT_TIMEOUT}" pdftoppm -png -r "$DPI" "$pdf" "$prefix" \

@@ -300,6 +300,12 @@ qa_dangling() {
     <(printf '%s\n' "$defined") <(printf '%s\n' "$referenced")
 }
 
+# shellcheck source=scripts/lib/source-protection.sh
+source "$SCRIPT_DIR/lib/source-protection.sh"
+PROTECTED_INPUTS=("$IN_ABS" "$TPL" "$REQ" "$IMG")
+wf_guard_destination --output "$OUT_PATH" "${PROTECTED_INPUTS[@]}"
+wf_guard_destination --out-dir "$OUT_DIR" "${PROTECTED_INPUTS[@]}"
+
 # Resolve the artifact directory before running intake.
 if [[ -n "$OUT_DIR" ]]; then
   ART_DIR="$OUT_DIR"
@@ -373,6 +379,9 @@ REPORT_MD="$ART_DIR/$out_stem-report.md"
 PLAN_ART="$ART_DIR/$out_stem-plan.json"
 INPUT_COPY="$ART_DIR/input-$(basename "$IN_ABS")"
 
+for destination in "$FINAL" "$REPORT_JSON" "$REPORT_MD" "$PLAN_ART" "$INPUT_COPY"; do
+  wf_guard_destination 'pipeline artifact' "$destination" "${PROTECTED_INPUTS[@]}"
+done
 if [[ "$IN_ABS" != "$INPUT_COPY" ]]; then cp -f "$IN_ABS" "$INPUT_COPY"; fi
 printf '%s' "$plan" > "$PLAN_ART"
 
@@ -655,6 +664,7 @@ if [[ "$TOC_ON" == 1 ]]; then
 fi
 
 # --- 5. deliver the composed output to the planned new path -----------------
+wf_guard_destination --output "$FINAL" "${PROTECTED_INPUTS[@]}"
 cp -f "$CURRENT" "$FINAL"
 [[ -f "$FINAL" && -s "$FINAL" ]] || { echo "$TOOL: no output produced at $FINAL" >&2; exit 1; }
 [[ "$(abs "$FINAL")" != "$IN_ABS" ]] || { echo "$TOOL: output equals source; refusing" >&2; exit 1; }

@@ -164,6 +164,10 @@ TMO="timeout 60"
 abs() { local d; d="$(cd "$(dirname "$1")" && pwd)"; printf '%s/%s\n' "$d" "$(basename "$1")"; }
 src_abs="$(abs "$SRC")"
 out_abs="$(abs "$OUT")"
+# shellcheck source=scripts/lib/source-protection.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/source-protection.sh"
+wf_guard_destination --out "$OUT" "$SRC"
+wf_guard_destination --report "$REPORT_OUT" "$SRC" "$OUT"
 
 [[ "$src_abs" != "$out_abs" ]] || { echo "--out must differ from the source (ADR-0003: never modify the source)" >&2; exit 2; }
 
@@ -180,6 +184,37 @@ twips_of() {
 }
 
 sum_csv() { awk -F, '{s=0; for(i=1;i<=NF;i++) s+=$i; printf "%d", s}' <<<"$1"; }
+
+# OfficeCLI pads missing grid columns; never let that silently change the
+# requested shape or portable widths. Delimiters are literal (not CSV quoting).
+check_shape() {
+  local label="$1" data="$2" widths="$3"
+  jq -en --arg data "$data" --arg widths "$widths" '
+    ($widths | split(",") | length) as $cols
+    | $data | split(";") | all(.[]; . != "" and (split(",") | length) == $cols)
+  ' >/dev/null || { echo "$label must be rectangular with one cell per column width" >&2; exit 2; }
+}
+check_shape --data "$DATA" "$COLW"
+[[ -z "$NESTED_CELL" ]] || check_shape --nested-data "$NESTED_DATA" "$NESTED_COLW"
+
+# Validate before producing any output/report. A rounded length may differ by
+# one twip from the explicit grid; write the grid sum to keep actual equality.
+col_sum="$(sum_csv "$COLW")"
+if ((WIDTH_SET)); then
+  width_tw="$(twips_of "$WIDTH")" || { echo "invalid --width: $WIDTH" >&2; exit 2; }
+  diff=$(( width_tw - col_sum )); if ((diff < 0)); then diff=$(( -diff )); fi
+  ((diff <= TOL)) || { echo "--width must equal sum(--col-widths) (${col_sum} twips)" >&2; exit 2; }
+fi
+eff_width="$col_sum"
+if [[ -n "$NESTED_CELL" ]]; then
+  nested_sum="$(sum_csv "$NESTED_COLW")"
+  if [[ -n "$NESTED_WIDTH" ]]; then
+    nw_tw="$(twips_of "$NESTED_WIDTH")" || { echo "invalid --nested-width: $NESTED_WIDTH" >&2; exit 2; }
+    ndiff=$(( nw_tw - nested_sum )); if ((ndiff < 0)); then ndiff=$(( -ndiff )); fi
+    ((ndiff <= TOL)) || { echo "--nested-width must equal sum(--nested-col-widths) (${nested_sum} twips)" >&2; exit 2; }
+  fi
+  nested_eff="$nested_sum"
+fi
 
 create_report() {
   local dst="$1"
@@ -209,27 +244,24 @@ if [[ -z "$REPORT_FILE" ]]; then
 fi
 create_report "$REPORT_FILE"
 
-col_sum="$(sum_csv "$COLW")"
-if ((WIDTH_SET)); then
-  width_tw="$(twips_of "$WIDTH")" || { echo "invalid --width: $WIDTH" >&2; exit 2; }
-  diff=$(( width_tw - col_sum )); if ((diff < 0)); then diff=$(( -diff )); fi
-  if ((diff > TOL)); then
-    echo "--width ($WIDTH = ${width_tw} twips) must equal sum(--col-widths) (${col_sum} twips):" >&2
-    echo "the portable construction requires tblW == sum(colWidths) (see references/research/nested-tables.md)" >&2
-    exit 2
-  fi
-  eff_width="$WIDTH"
-else
-  eff_width="$col_sum"
-fi
-
 # --- 1. the outer table -----------------------------------------------------
+tables_before="$($TMO officecli query "$out_abs" table --json)"
+jq -e '.success == true' <<<"$tables_before" >/dev/null || die "could not inventory source tables"
 $TMO officecli add "$out_abs" /body --type table \
   --prop data="$DATA" --prop layout=fixed \
   --prop colWidths="$COLW" --prop width="$eff_width" \
   --prop border.all="$BORDER" >/dev/null
 
-tbl_json="$($TMO officecli get "$out_abs" /body/tbl[1] --json)"
+tables_after="$($TMO officecli query "$out_abs" table --json)"
+jq -e '.success == true' <<<"$tables_after" >/dev/null || die "could not locate the built table"
+new_tables="$(jq -c --argjson before "$tables_before" '
+  ($before.data.results | map(.path)) as $old
+  | [.data.results[] | select(.path as $path | $old | index($path) | not)]
+' <<<"$tables_after")"
+[[ "$(jq length <<<"$new_tables")" == 1 ]] || die "expected exactly one newly built outer table"
+table_path="$(jq -r '.[0].path' <<<"$new_tables")"
+
+tbl_json="$($TMO officecli get "$out_abs" "$table_path" --json)"
 jq -e '.success == true' <<<"$tbl_json" >/dev/null 2>&1 || { die "OfficeCLI could not read the built table"; }
 grid_cols="$(jq -r '.data.results[0].format._gridCols // .data.results[0].format.cols' <<<"$tbl_json")"
 table_rows="$(jq -r '.data.results[0].format.rows' <<<"$tbl_json")"
@@ -283,7 +315,7 @@ if ((${#M_R[@]})); then
   for i in "${_order[@]}"; do
     (( ${M_CS[$i]} > 1 )) || continue
     di="$(dom_index "${M_R[$i]}" "${M_C[$i]}")"
-    $TMO officecli set "$out_abs" "/body/tbl[1]/tr[${M_R[$i]}]/tc[$di]" --prop colspan="${M_CS[$i]}" >/dev/null
+    $TMO officecli set "$out_abs" "$table_path/tr[${M_R[$i]}]/tc[$di]" --prop colspan="${M_CS[$i]}" >/dev/null
   done
 fi
 
@@ -292,17 +324,17 @@ if ((${#M_R[@]})); then
   for i in "${!M_R[@]}"; do
     (( ${M_RS[$i]} > 1 )) || continue
     di="$(dom_index "${M_R[$i]}" "${M_C[$i]}")"
-    $TMO officecli set "$out_abs" "/body/tbl[1]/tr[${M_R[$i]}]/tc[$di]" --prop vmerge=restart >/dev/null
+    $TMO officecli set "$out_abs" "$table_path/tr[${M_R[$i]}]/tc[$di]" --prop vmerge=restart >/dev/null
     for ((rr=${M_R[$i]}+1; rr<${M_R[$i]}+${M_RS[$i]}; rr++)); do
       dj="$(dom_index "$rr" "${M_C[$i]}")"
-      $TMO officecli set "$out_abs" "/body/tbl[1]/tr[$rr]/tc[$dj]" --prop vmerge=continue >/dev/null
+      $TMO officecli set "$out_abs" "$table_path/tr[$rr]/tc[$dj]" --prop vmerge=continue >/dev/null
     done
   done
 fi
 
 # --- 3. repeating header row ------------------------------------------------
 if ((HEADER_ROW)); then
-  $TMO officecli set "$out_abs" /body/tbl[1]/tr[1] --prop header=true >/dev/null
+  $TMO officecli set "$out_abs" "$table_path/tr[1]" --prop header=true >/dev/null
 fi
 
 # --- 4. optional nested table ----------------------------------------------
@@ -319,18 +351,9 @@ if [[ -n "$NESTED_CELL" ]]; then
       (( nc == ${M_R[$i]} && nr == ${M_C[$i]} )) || { echo "--nested-cell $NESTED_CELL is inside a merged cell; host the nested table on the merge's leading cell" >&2; exit 2; }
     fi
   done
-  nested_sum="$(sum_csv "$NESTED_COLW")"
-  if [[ -n "$NESTED_WIDTH" ]]; then
-    nw_tw="$(twips_of "$NESTED_WIDTH")" || { echo "invalid --nested-width: $NESTED_WIDTH" >&2; exit 2; }
-    ndiff=$(( nw_tw - nested_sum )); if ((ndiff < 0)); then ndiff=$(( -ndiff )); fi
-    (( ndiff <= TOL )) || { echo "--nested-width must equal sum(--nested-col-widths) (${nested_sum} twips)" >&2; exit 2; }
-    nested_eff="$NESTED_WIDTH"
-  else
-    nested_eff="$nested_sum"
-  fi
   ndom="$(dom_index "$nc" "$nr")"
-  nested_path="/body/tbl[1]/tr[$nc]/tc[$ndom]/tbl[1]"
-  $TMO officecli add "$out_abs" "/body/tbl[1]/tr[$nc]/tc[$ndom]" --type table \
+  nested_path="$table_path/tr[$nc]/tc[$ndom]/tbl[1]"
+  $TMO officecli add "$out_abs" "$table_path/tr[$nc]/tc[$ndom]" --type table \
     --prop data="$NESTED_DATA" --prop layout="$NESTED_LAYOUT" \
     --prop colWidths="$NESTED_COLW" --prop width="$nested_eff" \
     --prop border.all="$NESTED_BORDER" >/dev/null
@@ -355,17 +378,23 @@ if $TMO officecli get "$out_abs" /styles --json 2>/dev/null \
 fi
 
 # --- 6. read the result back (evidence) ------------------------------------
-tbl_json="$($TMO officecli get "$out_abs" /body/tbl[1] --json)"
+tbl_json="$($TMO officecli get "$out_abs" "$table_path" --json)"
 jq -e '.success == true' <<<"$tbl_json" >/dev/null 2>&1 || { die "OfficeCLI could not read the table back"; }
 obs_first_colwidth="$(jq -r '.data.results[0].format.colWidths // ""' <<<"$tbl_json" | sed 's/dxa//g')"
 obs_width="$(jq -r '.data.results[0].format.width // ""' <<<"$tbl_json")"
 obs_layout="$(jq -r '.data.results[0].format.layout // ""' <<<"$tbl_json")"
 obs_rows="$(jq -r '.data.results[0].format.rows // ""' <<<"$tbl_json")"
 obs_gridcols="$(jq -r '.data.results[0].format._gridCols // .data.results[0].format.cols // ""' <<<"$tbl_json")"
+[[ "$obs_width" =~ ^[0-9]+$ && "$obs_first_colwidth" =~ ^[0-9]+(,[0-9]+)*$ ]] \
+  || die "could not verify actual tblW/colWidths"
+obs_col_sum="$(sum_csv "$obs_first_colwidth")"
+[[ "$obs_width" == "$obs_col_sum" ]] \
+  || die "actual tblW=$obs_width differs from sum(colWidths)=$obs_col_sum"
+[[ "$obs_layout" == fixed ]] || die "actual outer table layout is '$obs_layout', not fixed"
 
 header_obs=false
 if ((HEADER_ROW)); then
-  hdr="$($TMO officecli get "$out_abs" /body/tbl[1]/tr[1] --json | jq -r '.data.results[0].format.header // false')"
+  hdr="$($TMO officecli get "$out_abs" "$table_path/tr[1]" --json | jq -r '.data.results[0].format.header // false')"
   [[ "$hdr" == "true" ]] && header_obs=true
 fi
 
@@ -375,7 +404,7 @@ if ((${#M_R[@]})); then
   merges_obs="$(
     for i in "${!M_R[@]}"; do
       di="$(dom_index "${M_R[$i]}" "${M_C[$i]}")"
-      fmt="$($TMO officecli get "$out_abs" "/body/tbl[1]/tr[${M_R[$i]}]/tc[$di]" --json | jq -c '.data.results[0].format')"
+      fmt="$($TMO officecli get "$out_abs" "$table_path/tr[${M_R[$i]}]/tc[$di]" --json | jq -c '.data.results[0].format')"
       jq -nc --argjson fmt "$fmt" --argjson row "${M_R[$i]}" --argjson col "${M_C[$i]}" \
         --argjson rs "${M_RS[$i]}" --argjson cs "${M_CS[$i]}" \
         '{row:$row, col:$col, rowspan:$rs, colspan:$cs,
@@ -397,11 +426,13 @@ if ((nested_requested)); then
   n_width="$(jq -r '.data.results[0].format.width // ""' <<<"$nj")"
   n_colw_raw="$(jq -r '.data.results[0].format.colWidths // ""' <<<"$nj" | sed 's/dxa//g')"
   n_layout="$(jq -r '.data.results[0].format.layout // ""' <<<"$nj")"
+  [[ "$n_width" =~ ^[0-9]+$ && "$n_colw_raw" =~ ^[0-9]+(,[0-9]+)*$ ]] \
+    || die "could not verify actual nested tblW/colWidths"
   n_colw_sum="$(sum_csv "$n_colw_raw")"
   n_border="$(jq -r '.data.results[0].format["border.top"] // ""' <<<"$nj")"
   n_diff=$(( n_width - n_colw_sum )); if ((n_diff < 0)); then n_diff=$(( -n_diff )); fi
   if [[ "$n_layout" != "fixed" ]]; then nested_portable=false; nested_reason="layout is '$n_layout', not 'fixed'"; fi
-  if (( n_diff > TOL )); then nested_portable=false; nested_reason="tblW=$n_width differs from sum(colWidths)=$n_colw_sum"; fi
+  (( n_diff == 0 )) || die "actual nested tblW=$n_width differs from sum(colWidths)=$n_colw_sum"
   if [[ -z "$n_border" ]]; then nested_portable=false; nested_reason="direct borders are missing"; fi
   nested_json="$(jq -nc \
     --arg path "$nested_path" --argjson width "$n_width" --arg colw "$n_colw_raw" \

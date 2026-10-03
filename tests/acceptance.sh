@@ -20,6 +20,8 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=tests/lib/preview-artifacts.sh
+source "$ROOT/tests/lib/preview-artifacts.sh"
 PIPE="$ROOT/scripts/wf-pipeline.sh"
 QA="$ROOT/scripts/wf-qa.sh"
 CHANGE_REPORT="$ROOT/scripts/wf-change-report.sh"
@@ -134,8 +136,8 @@ assert_eq "D9 full: TOC has no page numbers" \
 a_rep="$(jq -r '.artifacts.report_json' <<<"$aj")"
 assert_eq "D12 report: validates" "$("$CHANGE_REPORT" validate --report "$a_rep" >/dev/null 2>&1 && echo true || echo false)" "true"
 assert_eq "D12 report: five non-blank areas" "$(jq -r '([.changed,.decisions,.warnings,.downgrades,.unverified]|map(type=="array")|all)' "$a_rep")" "true"
-a_prev="$(jq -r '.preview.artifacts // [] | length' <<<"$aj")"
-assert_nonzero "D13 preview: artifact(s) produced" "$a_prev"
+assert_eq "D13 preview: every artifact exists and is non-empty" \
+  "$(wf_preview_artifacts_exist "$aj" && echo true || echo false)" "true"
 jq -c '.preview + {output: .output}' <<<"$aj" > "$A/preview.json"
 
 # D14 Definition of Done over the delivered output

@@ -98,6 +98,10 @@ done
 abs() { local d; d="$(cd "$(dirname "$1")" && pwd)"; printf '%s/%s\n' "$d" "$(basename "$1")"; }
 src_abs="$(abs "$SRC")"
 out_abs="$(abs "$OUT")"
+# shellcheck source=scripts/lib/source-protection.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/source-protection.sh"
+wf_guard_destination --out "$OUT" "$SRC"
+wf_guard_destination --report "$REPORT" "$SRC" "$OUT"
 [[ "$src_abs" != "$out_abs" ]] || { echo "--out must differ from the source (ADR-0003: never modify the source)" >&2; exit 2; }
 
 TMO="timeout 60"
@@ -149,13 +153,14 @@ fi
 
 # 3. Locate the field's cached-result run: the child right after the last
 #    `separate` fldChar in the paragraph (the run OfficeCLI appended for us).
-result_path="$($TMO officecli get "$out_abs" "$PARA" --json 2>/dev/null | jq -r '
+para_after="$($TMO officecli get "$out_abs" "$PARA" --json)"
+result_path="$(jq -r '
   .data.results[0].children as $c
-  | ($c | to_entries
-         | map(select(.value.type=="fieldChar" and .value.format.fieldCharType=="separate"))
-         | .[-1].key) as $s
-  | if ($s // null) == null then "" else ($c[$s+1].path // "") end
-' 2>/dev/null || true)"
+  | ($c | to_entries | map(select(.value.type=="fieldChar" and .value.format.fieldCharType=="separate")) | .[-1].key) as $s
+  | if $s == null then "" else ($c[$s+1].path // "") end
+' <<<"$para_after")"
+begin_path="$(jq -r '[.data.results[0].children[] | select(.type=="fieldChar" and .format.fieldCharType=="begin")] | last | .path // ""' <<<"$para_after")"
+instruction="$(jq -r '[.data.results[0].children[] | select(.type=="instrText")] | last | .text // "" | gsub("^\\s+|\\s+$"; "")' <<<"$para_after")"
 if [[ -z "$result_path" || "$result_path" == "null" ]]; then
   echo "could not locate the reference result run in $OUT" >&2
   exit 1
@@ -170,25 +175,24 @@ fi
 # 5. Clear the w:dirty marker OfficeCLI adds when the cached result changes, so
 #    the field is not reported as a stale cache. The field element exposes no
 #    `dirty` property, so this single step is raw-set (the recorded fallback).
+# Locate the new begin in document order, so existing fields in this paragraph
+# or later paragraphs keep their dirty/lock attributes. Header/footer fields
+# belong to other parts and are excluded from the /document XPath index.
+begins="$($TMO officecli query "$out_abs" fldChar --json)"
+begin_index="$(jq -r --arg path "$begin_path" '
+  [.data.results[] | select(.format.fieldCharType=="begin" and (.path | startswith("/body/")))]
+  | to_entries | map(select(.value.path==$path)) | first | if . == null then 0 else .key+1 end
+' <<<"$begins")"
+((begin_index > 0)) || { echo "could not locate the new REF begin" >&2; exit 1; }
 $TMO officecli raw-set "$out_abs" /document \
-  --xpath '//w:fldChar[@w:fldCharType="begin" and @w:dirty="true"]' \
-  --action replace --xml '<w:fldChar w:fldCharType="begin"/>' >/dev/null 2>&1 || true
+  --xpath "(//w:fldChar[@w:fldCharType='begin'])[$begin_index]" \
+  --action replace --xml '<w:fldChar w:fldCharType="begin"/>' >/dev/null
 
-# --- read the external behaviour back through OfficeCLI ----------------------
-fields_json="$($TMO officecli query "$out_abs" field --json 2>/dev/null || true)"
-[[ -n "$fields_json" ]] || fields_json='{}'
-if ! jq -e '.success == true' >/dev/null 2>&1 <<<"$fields_json"; then
-  echo "OfficeCLI could not read fields back from $OUT" >&2
-  exit 1
-fi
-field_json="$(jq -c --arg b "$BOOKMARK" '
-  [ .data.results[]?
-    | select((.format.instruction // "")
-        | split(" ") | map(select(length > 0))
-        | (.[0] == "REF" and .[1] == $b)) ] | last // {}' <<<"$fields_json")"
-instruction="$(jq -r '.format.instruction // ""' <<<"$field_json")"
-cached_text="$(jq -r '.text // ""' <<<"$field_json")"
-dirty="$(jq -r '(.format.dirty // false) | tostring' <<<"$field_json")"
+# Read the actual new result/marker; an older REF to the same bookmark can have
+# a stale cache and must not be mistaken for the field we just resolved.
+cached_text="$($TMO officecli get "$out_abs" "$result_path" --json | jq -r '.data.results[0].text // ""')"
+dirty="$($TMO officecli get "$out_abs" "$begin_path/fldChar[1]" --json | jq -r '(.data.results[0].format.dirty // false) | tostring')"
+[[ "$dirty" == false ]] || { echo "new REF is still dirty" >&2; exit 1; }
 
 placeholder=false
 [[ "$cached_text" == *"«"* || "$cached_text" == *"»"* ]] && placeholder=true

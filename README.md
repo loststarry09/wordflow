@@ -4,8 +4,9 @@
 > OfficeCLI operates `.docx` files; WordFlow teaches an agent how to use OfficeCLI to lay out
 > Word documents in a standards-based, maintainable, compatibility-first way.
 
-**v0.1.0 — shipped.** Generate a laid-out `.docx` from content, or tidy an existing one,
-without touching its words.
+**v0.1.1 — correctness / hardening release; no new features.** Generate a laid-out `.docx`
+from content, or tidy an existing one, without touching its words. See the
+[release notes](./report/v0.1.1-release-notes.md).
 
 ## What it is
 
@@ -57,8 +58,10 @@ pairing, 2-character first-line indent) — no configuration needed.
 
 A document is **portable** when Microsoft Word, WPS Writer, and LibreOffice Writer each open
 it **without a repair prompt** and render it faithfully from a shared portable subset — not
-pixel-identical (ADR-0004). The v0.1 acceptance run measured **12/12 output × application
-records repair-free** (4 outputs × 3 applications). No application recalculates fields on
+pixel-identical (ADR-0004). The v0.1.1 hardening run measured **12/12 document × application
+records repair-free** (full generate, limited generate, tidy, and the corrected nested-table
+fixture × 3 applications). The release gate requires Word, WPS, and LibreOffice: an
+unavailable requested application fails. No application recalculates fields on
 open, so WordFlow pre-computes and verifies every cache.
 
 ## Install & use
@@ -79,15 +82,18 @@ The workflows are driven by `scripts/wf-pipeline.sh`; feature capabilities are t
 
 ```sh
 tests/acceptance.sh        # v0.1 end-to-end acceptance (51 checks)
-tests/validate-fixtures.sh # validate + issue-check + render all 32 fixtures (65 checks)
+tests/validate-fixtures.sh # validate + issue-check + render + nested invariants (73 checks)
 tests/pipeline.sh          # existing-document end-to-end (63)
 tests/generate.sh          # generate-from-content workflow (73)
 tests/tidy.sh              # tidy-existing workflow (54)
-tests/compat-harness.sh    # real Word / WPS / LibreOffice (42)
+WF_REQUIRE_COMPAT=1 tests/compat-harness.sh # required real Word / WPS / LibreOffice (42, 0 skip)
 ```
 
-**v0.1.0:** 1,495 checks across 27 suites, all passing; `shellcheck -S warning` clean. See
-[`tests/README.md`](./tests/README.md) for the full suite list.
+**v0.1.1:** 2,464 checks across 37 suites, all passing; `shellcheck -S warning` clean
+over 63 shell sources. The two hardening rounds add 10 regression suites and 969 checks.
+See [`tests/README.md`](./tests/README.md) for the suite list and the
+[release verification](./report/2026-10-03-v0.1.1-release.md) for the final gates.
+The original v0.1.0 tag and its 1,495-check / 27-suite baseline are preserved.
 
 ## Known limitations
 

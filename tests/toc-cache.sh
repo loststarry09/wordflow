@@ -31,7 +31,9 @@ FIX="$ROOT/tests/fixtures"
 FIXTURE="$FIX/toc/toc-no-page-numbers.docx"
 HARNESS="$ROOT/scripts/wf-compat-harness.sh"
 OWNERSHIP="$ROOT/scripts/wf-style-ownership.sh"
-OUTROOT="$ROOT/tests/.out/toc-cache"
+mkdir -p "$ROOT/tests/.out"
+OUTROOT="$(mktemp -d "$ROOT/tests/.out/toc-cache.XXXXXX")"
+STAGE=""
 LOCK=/tmp/wordflow-wincom.lock
 DEFAULT_PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
 TMO=180
@@ -42,7 +44,10 @@ done
 [[ -f "$FIXTURE" ]] || { echo "missing fixture: $FIXTURE" >&2; exit 2; }
 [[ -x "$HARNESS" ]] || { echo "missing or non-executable: $HARNESS" >&2; exit 2; }
 
-rm -rf "$OUTROOT"; mkdir -p "$OUTROOT"
+cleanup() {
+  [[ -z "$STAGE" ]] || rm -rf -- "$STAGE"
+}
+trap cleanup EXIT
 
 pass=0
 fail=0
@@ -173,8 +178,10 @@ if [[ -x "$PS_BIN" ]]; then
   done
 
   # F9 / Update TOC probe: rebuild the field and read the TOC text again.
-  STAGE=/mnt/c/temp/wordflow-toc-test
-  if mkdir -p "$STAGE" 2>/dev/null && cp -f "$FIXTURE" "$STAGE/fixture.docx" 2>/dev/null; then
+  mkdir -p /mnt/c/temp
+  if STAGE="$(mktemp -d /mnt/c/temp/wordflow-toc-test.XXXXXX)" && cp "$FIXTURE" "$STAGE/fixture.docx"; then
+    stage_win="C:${STAGE#/mnt/c}"
+    stage_win="${stage_win//\//\\}"
     cat > "$STAGE/probe.ps1" <<'PS1'
 param([Parameter(Mandatory=$true)][string]$ProgId,[Parameter(Mandatory=$true)][string]$Path)
 $ErrorActionPreference = 'Stop'
@@ -210,9 +217,9 @@ PS1
       [[ "$st" == "ok" ]] || continue
       # COM/powershell can emit a stray non-JSON line before the object; keep the
       # last line, which is the compact JSON the probe prints.
-      out="$(flock -w 1800 "$LOCK" timeout "$TMO" "$PS_BIN" -NoProfile -ExecutionPolicy Bypass \
-             -File 'C:\temp\wordflow-toc-test\probe.ps1' -ProgId "$prog" \
-             -Path 'C:\temp\wordflow-toc-test\fixture.docx' 2>/dev/null | tr -d '\r' | tail -n1)"
+      out="$(flock -w 1800 "$LOCK" timeout "$TMO" "$PS_BIN" -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass \
+             -File "$stage_win\\probe.ps1" -ProgId "$prog" \
+             -Path "$stage_win\\fixture.docx" 2>/dev/null | tr -d '\r' | tail -n1)"
       if ! jq -e '.opened==true and .toc_count>=1' >/dev/null 2>&1 <<<"$out"; then
         report_fail "$app: F9 probe ran" "probe output: ${out:-<empty>}"
         continue
@@ -224,7 +231,6 @@ PS1
       assert_eq "$app: F9 after-update adds page number 2" "$(jq -rn --arg s "$after" '$s|test("Beta Section\\t2")')" "true"
       assert_eq "$app: F9 after-update adds page number 3" "$(jq -rn --arg s "$after" '$s|test("Gamma Subsection\\t3")')" "true"
     done
-    rm -rf "$STAGE" 2>/dev/null || true
   else
     report_skip "word/wps: F9 update probe" "no writable Windows staging dir ($STAGE)"
   fi

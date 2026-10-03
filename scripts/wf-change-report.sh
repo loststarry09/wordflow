@@ -34,6 +34,8 @@ set -euo pipefail
 
 readonly AREAS="changed decisions warnings downgrades unverified"
 readonly TOOL="wf-change-report.sh"
+# shellcheck source=scripts/lib/source-protection.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/source-protection.sh"
 
 # jq schema check for a well-formed report. Extra top-level keys are tolerated
 # so sibling work can attach metadata without breaking older consumers; the
@@ -165,6 +167,7 @@ cmd_new() {
   [[ -n "$src" ]] || die_usage "new requires --source"
   [[ -n "$out" ]] || die_usage "new requires --output"
   [[ -n "$dst" ]] || die_usage "new requires --out"
+  wf_guard_destination --out "$dst" "$src" "$out"
   local dir; dir="$(dirname -- "$dst")"
   [[ -d "$dir" ]] || die_report "output directory does not exist: $dir"
 
@@ -202,6 +205,7 @@ cmd_add() {
     [[ "$e" == *[![:space:]]* ]] || die_usage "--entry must not be blank"
   done
   validate_file "$report"
+  wf_guard_destination --report "$report" "$(jq -r '.source' "$report")" "$(jq -r '.output' "$report")"
 
   local tmp="$report" next
   for e in "${entries[@]}"; do

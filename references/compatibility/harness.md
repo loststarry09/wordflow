@@ -128,8 +128,13 @@ reported as `true`.
   or it does not.
 - Per-application PDF export and a PNG visual.
 - Reading every field's cached text (OfficeCLI for all apps; Word/WPS object model additionally).
-- Closing every application and force-killing any process the harness spawned, so no orphan lock
-  survives. PIDs present before the run (the user's own open Word/WPS) are never touched.
+- Closing the read-only document opened by the probe; quitting only a privately owned COM
+  instance. The supervisor records the PowerShell worker it creates; the probe identifies its
+  Word/WPS process through the document window's HWND and rejects a pre-existing/shared instance.
+- Cleanup reads only those ownership records, checks image and creation time, and terminates a
+  pinned process handle. PowerShell also requires the matching driver command line. An unrelated
+  PID appearing during the run is never a cleanup target. LibreOffice-only runs do no Windows
+  process cleanup. Claims and cleanup outcomes are kept under `<out>/processes/` for verification.
 
 **Best-effort / documented limitations**
 
